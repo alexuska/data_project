@@ -363,7 +363,7 @@ const MISS=[
   {id:'steal30',txt:'Отними 30 чужих клеток за раунд',goal:1,ev:'steal30',rw:40},{id:'end40',txt:'Набери 40% в Прогулке без конца',goal:1,ev:'end40',rw:60},
 ];
 const LOGIN_RW=[10,15,20,25,30,40,60];
-const HIS_REC=[72,70,68,66, 69,67,64,63, 66,64,62,60, 65,63,60,58, 62,60,58,56, 61,59,57,55, 60,58,56,54, 62,60,57,55];
+const HIS_REC=[58,55,52,50, 54,51,49,47, 52,50,47,45, 50,48,45,43, 48,46,43,41, 46,44,41,39, 44,42,39,37, 46,43,40,38];
 function holidayToday(){const d=new Date();if(d.getMonth()===11&&d.getDate()===23)return {id:'bday',txt:'С днём рождения, Катюша! 🎂',mult:2};if(d.getMonth()===3&&d.getDate()===25)return {id:'anniv',txt:'С годовщиной, моя любовь! 💍',mult:2};if(d.getDate()===25)return {id:'m25',txt:'25-е число: наш маленький праздник 💕',mult:1.5};return null;}
 const GUYFITS={summer:{name:'Белая рубашка',top:'#f6f3ea',dk:'#d9d4c8',legs:'#c9b89a',shoe:'#f2f2f2',short:false},polo:{name:'Чёрное поло',top:'#1e1e22',dk:'#111',legs:'#c9b89a',shoe:'#1e1e22',polo:true},tee:{name:'Оливковая рубашка',top:'#6b7a5a',dk:'#52604a',legs:'#1e1e22',shoe:'#f2f2f2'},puffer:{name:'Серый пуховик',top:'#6a6f69',dk:'#585d57',legs:'#303744',shoe:'#1e1e22',puffer:true},hoodie:{name:'Серый худи с кожанкой',top:'#2a2a2e',dk:'#1a1a1e',legs:'#2a2a30',shoe:'#1e1e22',hoodie:true},blazer:{name:'Синий пиджак',top:'#3a4a7a',dk:'#2a365a',legs:'#2a2a30',shoe:'#1e1e22'}};
 const GUYBYCH={warsaw:'summer',como:'polo',salerno:'tee',paris:'tee',koeln:'polo',moldova:'summer',belarus:'blazer',moscow:'puffer'};
@@ -480,7 +480,7 @@ const PUDESC={syrniki:'сырники',icecream:'мороженое брауни
 const LVN={warsaw:['Первая поляна','Жабки','Собачья площадка','Закат у Дворца'],como:['Набережная','Селфи-палки','Пицца и лимонад','Катер'],salerno:['Жара','Cocco bello','Пикник','Закат над заливом'],paris:['Крыски','Чел с великом','Пан-сюисс','Ночь в Париже'],koeln:['Рейн','Фанат','Дождь в Кёльне','Собор'],moldova:['Виноградники','Гуси','Камри','Бендеры'],belarus:['Челюскинцев','Варка','Витебск','Зубр'],moscow:['Нескучный сад','Огни парка','Дождь','Первый снег']};
 const LV=[];
 CH.forEach((ch,ci)=>{for(let j=0;j<4;j++){const g=ci*4+j;const nR=g<4?1:g<20?2:3;const rivals=[];for(let i=0;i<nR;i++)rivals.push(ch.rivals[i%ch.rivals.length]);
-  const b=Math.round(Math.min(50,25+g*0.9));const L={n:LVN[ch.id][j],ch:ci,time:90+(j===3?15:0)+Math.floor(g/8)*5,rivals,dogs:g<6?1:2,goals:[b,b+15,b+30],tip:ch.tips[j]};
+  const b=Math.round(Math.min(50,25+g*0.9));const L={n:LVN[ch.id][j],ch:ci,time:90+(j===3?15:0)+Math.floor(g/8)*5,rivals,dogs:g<6?1:2,goals:[b,b+8,b+16],tip:ch.tips[j]};
   if(ch.id==='paris'&&j===3)L.dark=true;if(ch.id==='koeln'&&j===2)L.rain=true;if(ch.id==='salerno'&&j===3)L.sunset=true;
   if(ch.id==='moscow'){if(j===1)L.dark=true;if(j===2)L.rain=true;if(j===3)L.snow=true;}
   LV.push(L);}});
@@ -1549,7 +1549,7 @@ function finishLevel(){
   const second=!endless&&!won&&!usedSecond&&p>=lvl.goals[0]-8&&save.acorns>=20;
   $('rMore').hidden=!second;$('rRecord').hidden=!endless;
   if(endless){if(p>save.endlessBest){save.endlessBest=p;$('rRecord').textContent=`Новый рекорд Прогулки: ${p.toFixed(0)}%`;}else $('rRecord').textContent=`Рекорд Прогулки: ${save.endlessBest.toFixed(0)}%`;if(p>=40)mission('end40',1);}
-  let flower=null;if(!endless&&rStars===3){flower=FLOWERS[lvlIdx%FLOWERS.length];save.flowers[flower.id]=(save.flowers[flower.id]||0)+1;}
+  let flower=null;if(!endless&&(rStars===3||p>=50)){flower=FLOWERS[lvlIdx%FLOWERS.length];save.flowers[flower.id]=(save.flowers[flower.id]||0)+1;}
   $('rFlower').hidden=!flower;if(flower)$('rFlower').textContent=`В букетик от Лёши: ${flower.name} 🌷 Всего цветов: ${Object.values(save.flowers).reduce((a,b)=>a+b,0)}`;
   if(!endless){if(rStars>starsOf(lvlIdx))save.stars[lvlIdx]=rStars;if(won)mission('win',1);if(rStars===3)mission('stars3',1);if(p>=60)mission('pct60',1);if(won&&cutsRound===0)mission('nocut',1);}
   if(!endless&&won){const ci=lvl.ch;const wasDone=chapterDone(ci);if(rStars>starsOf(lvlIdx))save.stars[lvlIdx]=rStars;if(!wasDone&&chapterDone(ci))setTimeout(()=>toast(`Открылась записка от ${HIM}! Смотри в меню`),1400);}
@@ -1608,7 +1608,7 @@ function openBouquet(){state='bouquet';show('bouquetScr');const c=$('bouquetCv')
   for(let i=0;i<n;i++){const a=(i/Math.max(1,n-1)-.5)*2.4;const r=70+(i%3)*22+seed()*10;const x=165+Math.sin(a)*r*.9,y=165-Math.cos(a)*r*.75-20;drawFlower(c,stems[(i*7)%total],x,y,1+(i%3)*.12,seed()*6);}
   c.font='700 20px Caveat, cursive';c.fillStyle='#86311a';c.textAlign='center';c.fillText(total?'Моей любимой Катюше':'',165,305);
   $('bouquetPhotoWrap').hidden=!(save.flowers.rose>0);$('bouquetPhoto').src=PH.flowers2;
-  $('bouquetText').textContent=total?`В букете ${total} ${total%10===1&&total%100!==11?'цветок':total%10>=2&&total%10<=4&&(total%100<10||total%100>=20)?'цветка':'цветов'}. Каждые три звезды в раунде добавляют новый.`:'Каждые три звезды в раунде добавляют цветок в букет.';
+  $('bouquetText').textContent=total?`В букете ${total} ${total%10===1&&total%100!==11?'цветок':total%10>=2&&total%10<=4&&(total%100<10||total%100>=20)?'цветка':'цветов'}. Три звезды или 50% парка за раунд добавляют новый.`:'Три звезды или 50% парка за раунд добавляют цветок в букет.';
   $('bouquetList').innerHTML=FLOWERS.map(f=>`<span class="rival">${f.name}: ${save.flowers[f.id]||0}</span>`).join('');}
 $('bouquetBtn').onclick=openBouquet;$('bouquetBack').onclick=goMenu;
 function chapterDone(ci){for(let j=0;j<4;j++)if(!starsOf(ci*4+j))return false;return true;}
