@@ -83,6 +83,8 @@ p{margin:0;line-height:1.45;font-weight:600}
 .holiday{background:linear-gradient(90deg,rgba(214,120,150,.22),rgba(229,162,44,.22));border-radius:12px;padding:10px 12px;font-weight:800;font-size:14px;text-align:center;font-family:var(--f-hand);font-size:22px;color:var(--rust)}
 .note{position:relative;background:#fffaf0;border-radius:6px;padding:18px 18px 16px;box-shadow:0 6px 16px rgba(0,0,0,.25);font-family:var(--f-hand);font-size:24px;line-height:1.25;color:var(--ink)}
 .note::before{content:"";position:absolute;top:-10px;left:22px;width:70px;height:20px;transform:rotate(-4deg);background:rgba(229,162,44,.7)}
+.splash-line{font-size:30px;line-height:1.1;color:var(--rust);margin:4px 0}
+.card.splash .polaroid{transform:rotate(2deg)}
 .note.locked{background:var(--paper-2);color:var(--ink-soft);font-family:var(--f-body);font-size:14px;font-weight:700}
 .note .from{display:block;text-align:right;font-size:18px;color:var(--ink-soft);margin-top:6px}
 .note.photo-note img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:4px;margin-bottom:10px}
@@ -200,6 +202,16 @@ p{margin:0;line-height:1.45;font-weight:600}
 <canvas id="mini" width="168" height="168" hidden aria-hidden="true"></canvas>
 <div id="combo" hidden><div class="cl" id="comboLbl">Комбо ×2</div><div class="cb"><i id="comboBar"></i></div></div>
 <div id="toast" hidden></div>
+
+<div class="screen center" id="splash" hidden>
+  <div class="wrap"><div class="card taped center-text splash">
+    <div class="polaroid photo"><img id="splashPhoto" alt=""><span>Нескучный сад, ноябрь</span></div>
+    <h1 class="logo">Белочки Нескучного сада</h1>
+    <p class="hand splash-line">Нейроигра для Катюши<br>с любовью от Лёши ❤️</p>
+    <p class="muted">Восемь парков нашего лета, белочки, уточки и крыски, записки и букетик. Всё внутри — для тебя.</p>
+    <button class="btn" id="splashGo" type="button">Открыть</button>
+  </div></div>
+</div>
 
 <div class="screen center" id="menu">
   <div class="wrap"><div class="card taped">
@@ -340,7 +352,7 @@ function plural(n,one,few,many){return n%10===1&&n%100!==11?one:n%10>=2&&n%10<=4
 
 /* ================= save ================= */
 const SAVE_KEY='belochki-v4';
-function defSave(){return {acorns:0,up:{speed:0,shield:0,fever:0,start:0,pocket:0,magnet:0},owned:{'hat:none':1,'scarf:none':1,'scarf:grey':1,'top:wine':1,'bottom:jeansdark':1,'bag:none':1},eq:{hat:'none',scarf:'grey',top:'wine',bottom:'jeansdark',bag:'none'},stars:{},dex:{},daily:{date:'',prog:0,done:false},music:true,sfx:true,flowers:{},xp:0,missions:[],login:{last:'',streak:0},endlessBest:0,boost:null,rounds:0,guyfit:'auto',dev:false,myrec:{}};}
+function defSave(){return {acorns:0,up:{speed:0,shield:0,fever:0,start:0,pocket:0,magnet:0},owned:{'hat:none':1,'scarf:none':1,'scarf:grey':1,'top:wine':1,'bottom:jeansdark':1,'bag:none':1},eq:{hat:'none',scarf:'grey',top:'wine',bottom:'jeansdark',bag:'none'},stars:{},dex:{},daily:{date:'',prog:0,done:false},music:true,sfx:true,flowers:{},xp:0,missions:[],login:{last:'',streak:0},endlessBest:0,boost:null,rounds:0,guyfit:'auto',dev:false,myrec:{},splashSeen:false};}
 let save=defSave();
 try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||localStorage.getItem('belochki-v3')||'null');if(s){const d=defSave();save=Object.assign(d,s);save.up=Object.assign(d.up,s.up||{});save.eq=Object.assign(d.eq,s.eq||{});if(save.eq.coat){save.eq.top=save.eq.coat;delete save.eq.coat;}for(const k in save.owned)if(k.startsWith('coat:')){save.owned['top:'+k.slice(5)]=1;}Object.assign(save.owned,{'scarf:none':1,'top:wine':1,'bottom:jeansdark':1,'bag:none':1});save.daily=Object.assign(d.daily,s.daily||{});if(!localStorage.getItem(SAVE_KEY)){save.stars={};save.missions=[];}}}catch(e){}
 function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(save));}catch(e){}}
@@ -452,26 +464,26 @@ const OUCH=Object.fromEntries(Object.entries(RIVALS).map(([k,v])=>[k,v.ouch]));
 /* chapters: the Eurotour */
 const CH=[
   {id:'warsaw',name:'Варшава',cap:'Мы в Варшаве',sub:'Лето. Дворец культуры в закатной подсветке',critter:'squirrel',style:'plaza',props:['fountain','kiosk'],ground:'#6f8a4e',patch:[90,120,120,150,55,80],leaves:['#7fa05a','#8fb46a','#a7c47b','#d9b24a'],canopy:['#5f9c4c','#6fae58','#88bf6a','#a7c47b'],fall:['#a7c47b','#d9b24a'],tree:'leafy',dusk:true,key:0,landmark:'warsaw',
-    rivals:['zhabka','polak','pigeons'],pu:{time:['Фрытки','fries'],gold:['Батат-фри','sweetfries'],speed:['Моноколесо','wheel']},
+    rivals:['zhabka','polak','pigeons'],pu:{time:['Фрытки','fries'],gold:['Нутелла','nutella'],speed:['Моноколесо','wheel']},
     tips:['Выходи со своей земли, обегай кусок парка и возвращайся: всё внутри петли станет твоим. Белочки внутри накормлены!','Жабки открыты круглосуточно и отжимают землю быстро. Перебеги их линию, пока они снаружи.','Собаки рвут линии. Длинная петля — больше земли, но больше риска.','Вечер у Дворца культуры. Три захвата подряд включают лихорадку: очки ×3.']},
   {id:'como',name:'Озеро Комо',cap:'На катере на Комо',sub:'Солнце, горы и катер на воде',critter:'duck',ground:'#c9b391',patch:[185,205,170,190,135,160],leaves:['#9ab86a','#b6cd82','#e2c76a','#d0d8a0'],cobble:true,canopy:['#3f7a3a','#4e8c45','#6aa35a','#8fbf6a'],fall:[],tree:'cypress',sun:true,key:2,landmark:'como',sea:'right',
-    rivals:['italian','gull','pigeons'],pu:{time:['Киви','kiwi'],gold:['Паста песто','pesto'],speed:['Моноколесо','wheel']},
-    tips:['Набережная Комо. Уточки вместо белочек: окружай их петлёй.','Итальянцы вежливо извиняются и отжимают землю. Чайки быстрые, но делают маленькие петли.','Паста песто удваивает следующий захват. Киви даёт секунды.','Большая петля вдоль набережной: катер смотрит на тебя!']},
+    rivals:['italian','gull','pigeons'],pu:{time:['Мороженое брауни','icecream'],gold:['Паста песто','pesto'],speed:['Моноколесо','wheel']},
+    tips:['Набережная Комо. Уточки вместо белочек: окружай их петлёй.','Итальянцы вежливо извиняются и отжимают землю. Чайки быстрые, но делают маленькие петли.','Паста песто удваивает следующий захват. Мороженое брауни даёт секунды.','Большая петля вдоль набережной: катер смотрит на тебя!']},
   {id:'salerno',name:'Салерно',cap:'Салерно',sub:'Жара, пляж и пикник у моря',critter:'chi',ground:'#e3c48c',patch:[215,235,190,210,130,160],leaves:['#d6a965','#c4904a','#efd9a8','#b7a06e'],canopy:['#5a8a3a','#6f9c44','#86ad58'],fall:[],tree:'palm',hot:true,key:2,landmark:'salerno',sea:'bottom',
-    rivals:['rings','italian','gull'],pu:{time:['Арбуз','watermelon'],gold:['Кьянти','chianti'],speed:['Моноколесо','wheel']},
-    tips:['Очень жарко: воздух дрожит. Чихуахуа вместо белочек, и они везде.','Продавец надувных кругов ходит вдоль пляжа большими кругами. Отрежь его подальше от дома.','Арбуз даёт секунды, Кьянти удваивает захват. Пикник у моря!','Закат над заливом. Собаки злее: жара.']},
+    rivals:['rings','italian','gull'],pu:{time:['Киви','kiwi'],gold:['Кьянти','chianti'],speed:['Моноколесо','wheel']},
+    tips:['Очень жарко: воздух дрожит. Чихуахуа вместо белочек, и они везде.','Продавец надувных кругов ходит вдоль пляжа большими кругами. Отрежь его подальше от дома.','Киви даёт секунды, Кьянти удваивает захват. Пикник у моря!','Закат над заливом. Собаки злее: жара.']},
   {id:'paris',name:'Париж',cap:'Париж, Тур Эфель',sub:'Золотой час, Эйфелева башня, круассаны',critter:'rat',style:'champ',props:['carousel','kiosk'],ground:'#8a8f6e',patch:[120,150,130,155,90,110],leaves:['#b9a06a','#d6bf7d','#8f9a62','#e0c58e'],canopy:['#6f8a4a','#8aa05a','#a3b56a','#c9b26a'],fall:['#d6bf7d','#c9b26a'],tree:'plane',key:0,landmark:'paris',
-    rivals:['french','bikeguy','pigeons'],pu:{time:['Круассан','croissant'],gold:['Нутелла','nutella'],speed:['Моноколесо','wheel']},
-    tips:['Парижские крыски вместо белочек: они очень быстрые.','Чел с великом в руках носится как бешеный и рвёт линии. Перехвати его первым.','Нутелла удваивает следующий захват. Круассан даёт секунды.','Ночь. Эйфелева башня светится, видно только у фонарей.']},
+    rivals:['french','bikeguy','pigeons'],pu:{time:['Круассан','croissant'],gold:['Пан-сюисс','painsuisse'],speed:['Моноколесо','wheel']},
+    tips:['Парижские крыски вместо белочек: они очень быстрые.','Чел с великом в руках носится как бешеный и рвёт линии. Перехвати его первым.','Пан-сюисс удваивает следующий захват. Круассан даёт секунды.','Ночь. Эйфелева башня светится, видно только у фонарей.']},
   {id:'koeln',name:'Гельзенкирхен и Кёльн',cap:'В Deutsche Bahn',sub:'Пасмурно, собор и кебаб',critter:'squirrel',style:'promenade',sea:'right',river:true,props:['kebab','tram'],ground:'#6a7f58',patch:[85,110,110,135,70,90],leaves:['#8fa06a','#a7b57c','#c4b57a','#b0a070'],canopy:['#4f7a3f','#5f8c4a','#7aa25a','#9ab06a'],fall:['#c4b57a'],tree:'leafy',overcast:true,key:1,landmark:'koeln',
-    rivals:['turk','arab','pigeons'],pu:{time:['Кебаб','kebab'],gold:['Егермейстер','jager'],speed:['Моноколесо','wheel']},
-    tips:['Серое небо над Рейном. Рыжие белочки вернулись.','Турок зазывает в кебабную, араб никуда не спешит. Отрезай обоих.','Дождь: лужи замедляют. Кебаб на карте даёт секунды.','Кёльнский собор. Егермейстер удваивает захват: не увлекайся.']},
+    rivals:['turk','arab','pigeons'],pu:{time:['Кебаб','kebab'],gold:['Питьевой йогурт','yogurt'],speed:['Моноколесо','wheel']},
+    tips:['Серое небо над Рейном. Рыжие белочки вернулись.','Турок зазывает в кебабную, араб никуда не спешит. Отрезай обоих.','Дождь: лужи замедляют. Кебаб на карте даёт секунды.','Кёльнский собор. Питьевой йогурт удваивает захват.']},
   {id:'moldova',name:'Молдова',cap:'С любимой на Днестре',sub:'Кишинёв, Тирасполь, Бендеры: виноградники и крепость',critter:'cat',style:'vineyard',sea:'left',river:true,props:['tower','well'],ground:'#9a8a52',patch:[150,175,140,160,70,95],leaves:['#c4a84a','#d9bd62','#9aa050','#b08a3a'],canopy:['#6a9a3a','#7fae48','#9ac05a','#b5c470'],fall:['#d9bd62'],tree:'vine',sun:true,key:2,landmark:'bender',
     rivals:['roma','romaman','geese'],pu:{time:['Мамалыга','mamaliga'],gold:['Виноград','grapes'],speed:['Камри','camry']},
     tips:['Котики вместо белочек. Виноградники вокруг, крепость на горизонте.','Гуси шипят и бегут напролом. Цыганка гадает, цыган играет, оба отжимают землю.','Бордовая Камри на карте: садись и гони! Мамалыга даёт секунды.','Закат над Бендерами. Все собрались: отнимай и не жадничай.']},
   {id:'belarus',name:'Беларусь',cap:'В родном Витебске',sub:'Витебск и Минск: парк Челюскинцев, кофе из «Варки»',critter:'squirrel',zubr:true,style:'vitebsk',props:['chagall','varka'],ground:'#7a8a4a',patch:[100,125,120,145,55,75],leaves:['#a7b56a','#c9b24a','#d9a93a','#8fa05a'],canopy:['#8fae4a','#b5bf5a','#d9b24a','#c98b2e'],fall:['#d9b24a','#c98b2e'],tree:'leafy',key:0,landmark:'vitebsk',
-    rivals:['dvornik','pigeons','photog'],pu:{time:['Кофе из «Варки»','coffee'],gold:['Питьевой йогурт','yogurt'],speed:['Моноколесо','wheel']},
-    tips:['Начало осени. Белочки парка Челюскинцев и где-то бродит зубр: накорми его, он легенда.','Кофе из «Варки» даёт секунды. Питьевой йогурт удваивает захват.','Дворник метёт дорожки, фотограф ловит кадр. Голуби как всегда.','Витебск: лестница к собору. Большой финал Беларуси.']},
+    rivals:['dvornik','pigeons','photog'],pu:{time:['Кофе из «Варки»','coffee'],gold:['Драники','draniki'],speed:['Моноколесо','wheel']},
+    tips:['Начало осени. Белочки парка Челюскинцев и где-то бродит зубр: накорми его, он легенда.','Кофе из «Варки» даёт секунды. Драники удваивают захват.','Дворник метёт дорожки, фотограф ловит кадр. Голуби как всегда.','Витебск: лестница к собору. Большой финал Беларуси.']},
   {id:'moscow',name:'Нескучный сад',cap:'Свидание в саду',sub:'Москва, ноябрь: белочки, синички и грецкие орехи',critter:'squirrel',props:['feeder','rotunda'],ground:'#8b6440',patch:[95,118,112,132,52,70],leaves:['#a0522d','#b8732f','#c98b2e','#e0a93a','#7b4a2a','#d9b24a','#8e5a33','#b0662c'],canopy:['#e3b23c','#d99a2b','#f0c75a','#c9822a','#b9a03a','#e8a83a'],fall:['#e3b23c','#d99a2b','#c9822a','#f0c75a','#b8732f'],tree:'leafy',key:0,landmark:'moscow',
     rivals:['robot','mom','photog','pigeons'],pu:{time:['Сырники','syrniki'],gold:['Мороженое брауни','icecream'],speed:['Моноколесо','wheel']},
     tips:['Дом. Нескучный сад, серо-рыжие белочки и робот-доставщик «Пухосос», который ездит по дорожкам.','Вечер, фонари. Видно только рядом с Катей.','Дождь и лужи. Держи линию короче.','Первый снег! На снегу видны следы, лыжники мчатся по дорожкам. Финал.']},
@@ -512,25 +524,43 @@ function audioInit(){
 }
 function audioResume(){if(AU.ctx&&AU.ctx.state==='suspended')AU.ctx.resume();}
 function setAudioToggles(){if(!AU.ctx)return;const t=AU.ctx.currentTime;AU.music.gain.setTargetAtTime(save.music?.42:0,t,.3);AU.amb.gain.setTargetAtTime(save.sfx?.55:0,t,.3);AU.sfx.gain.value=save.sfx?.8:0;}
-const SCALES=[[0,2,4,7,9],[0,3,5,7,10],[0,2,4,7,9]];const ROOTS=[261.63,220,293.66];
-const PROG=[[0,0],[5,-1],[3,0],[4,0]];
+/* per-chapter themes: scale, root, bpm, chord progression, melody voice, rhythm pattern */
+const THEMES={
+  warsaw: {scale:[0,2,4,7,9],root:261.63,bpm:76,prog:[[0,0],[5,-1],[3,0],[4,0]],voice:'piano',rhythm:[1,0,1,0,1,0,1,0]},
+  como:   {scale:[0,2,4,5,7,9,11],root:293.66,bpm:92,prog:[[0,0],[3,0],[4,0],[0,0]],voice:'mandolin',rhythm:[1,1,0,1,1,0,1,1]},      // tarantella-ish
+  salerno:{scale:[0,2,4,5,7,9,11],root:329.63,bpm:84,prog:[[0,0],[5,-1],[3,0],[4,0]],voice:'mandolin',rhythm:[1,0,1,1,0,1,0,1]},
+  paris:  {scale:[0,2,3,5,7,8,10],root:220,bpm:88,prog:[[0,0],[0,0],[4,0],[4,0]],voice:'accordion',rhythm:[1,0,0,1,0,0,1,0]},        // musette waltz feel
+  koeln:  {scale:[0,2,4,5,7,9,11],root:196,bpm:70,prog:[[0,0],[3,0],[5,-1],[4,0]],voice:'organ',rhythm:[1,0,1,0,1,0,1,0]},
+  moldova:{scale:[0,1,4,5,7,8,11],root:246.94,bpm:96,prog:[[0,0],[3,0],[4,0],[0,0]],voice:'violin',rhythm:[1,1,1,0,1,1,1,0]},        // hijaz, fiddle
+  belarus:{scale:[0,2,3,5,7,8,10],root:261.63,bpm:72,prog:[[0,0],[5,-1],[2,0],[4,0]],voice:'piano',rhythm:[1,0,1,0,1,0,1,0]},
+  moscow: {scale:[0,2,4,7,9],root:261.63,bpm:74,prog:[[0,0],[5,-1],[3,0],[4,0]],voice:'piano',rhythm:[1,0,1,0,1,0,1,0]},
+};
+AU.theme='moscow';
 function nf(root,scale,deg,oct){const o=Math.floor(deg/scale.length),d=((deg%scale.length)+scale.length)%scale.length;return root*Math.pow(2,(scale[d]+12*(o+oct))/12);}
 function piano(t,f,vol,dur){const c=AU.ctx;const o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain(),fl=c.createBiquadFilter();
   o.type='triangle';o.frequency.value=f;o2.type='sine';o2.frequency.value=f*2;fl.type='lowpass';fl.frequency.value=1600;
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.015);g.gain.exponentialRampToValueAtTime(vol*.35,t+.25);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
   const g2=c.createGain();g2.gain.value=.25;o2.connect(g2).connect(fl);o.connect(fl);fl.connect(g).connect(AU.music);o.start(t);o2.start(t);o.stop(t+dur+.05);o2.stop(t+dur+.05);}
+function voice(kind,t,f,vol,dur){const c=AU.ctx;
+  if(kind==='piano'){piano(t,f,vol,dur);return;}
+  const g=c.createGain(),fl=c.createBiquadFilter();fl.connect(g).connect(AU.music);
+  if(kind==='mandolin'){fl.type='highpass';fl.frequency.value=400;for(let i=0;i<3;i++){const o=c.createOscillator();o.type='triangle';o.frequency.value=f;o.connect(fl);o.start(t+i*.045);o.stop(t+i*.045+.12);}g.gain.setValueAtTime(vol*.9,t);g.gain.exponentialRampToValueAtTime(.0001,t+.3);return;}
+  if(kind==='accordion'){fl.type='lowpass';fl.frequency.value=1800;for(const d of [-7,0,7]){const o=c.createOscillator();o.type='sawtooth';o.frequency.value=f;o.detune.value=d;o.connect(fl);o.start(t);o.stop(t+dur+.05);}g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol*.35,t+.06);g.gain.setValueAtTime(vol*.35,t+dur*.7);g.gain.linearRampToValueAtTime(.0001,t+dur);return;}
+  if(kind==='organ'){fl.type='lowpass';fl.frequency.value=1200;for(const m of [1,2,3]){const o=c.createOscillator();o.type='sine';o.frequency.value=f*m;const og=c.createGain();og.gain.value=1/m;o.connect(og).connect(fl);o.start(t);o.stop(t+dur+.05);}g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol*.6,t+.08);g.gain.linearRampToValueAtTime(.0001,t+dur);return;}
+  if(kind==='violin'){fl.type='bandpass';fl.frequency.value=f*2;fl.Q.value=1.2;const o=c.createOscillator();o.type='sawtooth';o.frequency.setValueAtTime(f*.985,t);o.frequency.linearRampToValueAtTime(f,t+.08);const lfo=c.createOscillator();lfo.frequency.value=5.5;const lg=c.createGain();lg.gain.value=f*.006;lfo.connect(lg).connect(o.frequency);lfo.start(t);lfo.stop(t+dur+.05);o.connect(fl);o.start(t);o.stop(t+dur+.05);g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol*.5,t+.12);g.gain.setValueAtTime(vol*.5,t+dur*.6);g.gain.linearRampToValueAtTime(.0001,t+dur);return;}
+  piano(t,f,vol,dur);}
 function bass(t,f,dur){const c=AU.ctx;const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;
   g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3,t+.03);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g).connect(AU.music);o.start(t);o.stop(t+dur+.05);}
 function pad(t,fs,dur){const c=AU.ctx;const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.value=700;const g=c.createGain();
   g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.07,t+.8);g.gain.setValueAtTime(.07,t+dur-.6);g.gain.linearRampToValueAtTime(.0001,t+dur);fl.connect(g).connect(AU.music);
   for(const f of fs){for(const dt of [-3,3]){const o=c.createOscillator();o.type='sine';o.frequency.value=f;o.detune.value=dt;o.connect(fl);o.start(t);o.stop(t+dur+.05);}}}
 function musicTick(){
-  if(!AU.ctx)return;const c=AU.ctx;const key=AU.chapter;const bpm=(key===1?68:(key===2?80:74))+(AU.rush?16:0);const beat=60/bpm,eighth=beat/2;
+  if(!AU.ctx)return;const c=AU.ctx;const TH=THEMES[AU.theme]||THEMES.moscow;const bpm=TH.bpm+(AU.rush?16:0);const beat=60/bpm,eighth=beat/2;
   while(AU.next<c.currentTime+.35){
-    const sc=SCALES[key],root=ROOTS[key];const [deg,oct]=PROG[AU.bar%4];const st=AU.step;const t=AU.next;
+    const sc=TH.scale,root=TH.root;const [deg,oct]=TH.prog[AU.bar%TH.prog.length];const st=AU.step;const t=AU.next;
     if(st===0){bass(t,nf(root,sc,deg,oct-2),beat*1.8);pad(t,[nf(root,sc,deg,oct-1),nf(root,sc,deg+2,oct-1),nf(root,sc,deg+4,oct-1)],beat*4);}
     if(st===4)bass(t,nf(root,sc,deg+4,oct-2),beat*1.5);
-    if(st%2===0?Math.random()<.7:Math.random()<.3){AU.mel+=pick([-2,-1,-1,0,1,1,2,3]);AU.mel=clamp(AU.mel,0,12);piano(t,nf(root,sc,AU.mel,1),R(.1,.17),R(.6,1.2));if(Math.random()<.25)piano(t+eighth*.5,nf(root,sc,AU.mel+2,0),.06,.5);}
+    if(TH.rhythm[st]&&Math.random()<.8){AU.mel+=pick([-2,-1,-1,0,1,1,2,3]);AU.mel=clamp(AU.mel,0,12);voice(TH.voice,t,nf(root,sc,AU.mel,1),R(.1,.17),R(.5,1.1));if(Math.random()<.25)voice(TH.voice,t+eighth*.5,nf(root,sc,AU.mel+2,0),.06,.45);}
     AU.step++;if(AU.step>=8){AU.step=0;AU.bar++;}AU.next+=eighth;
   }
 }
@@ -1487,7 +1517,7 @@ function updateHud(){
 function setGoalMarks(){const g=lvl.goals;['s1','s2','s3'].forEach((id,i)=>$(id).style.left=g[i]+'%');}
 
 /* ================= screens ================= */
-const SCREENS=['menu','map','intro','pause','result','miniScr','shop','dexScr','chestScr','bouquetScr','notesScr'];
+const SCREENS=['menu','map','intro','pause','result','miniScr','shop','dexScr','chestScr','bouquetScr','notesScr','splash'];
 function show(id){for(const s of SCREENS)$(s).hidden=s!==id;const play=id===null;$('hud').hidden=!play;$('mini').hidden=!play;if(!play)$('combo').hidden=true;refreshAcorns();}
 function refreshAcorns(){document.querySelectorAll('.acornCount').forEach(e=>e.textContent=save.acorns);}
 function setToggleLabels(){document.querySelectorAll('.musicBtn').forEach(b=>b.textContent=save.music?'Музыка: вкл':'Музыка: выкл');document.querySelectorAll('.sfxBtn').forEach(b=>b.textContent=save.sfx?'Звуки: вкл':'Звуки: выкл');}
@@ -1510,7 +1540,7 @@ $('shopBtn').onclick=()=>{audioInit();openShop('up','menu');};
 $('dexBtn').onclick=()=>openDex();
 $('mapBack').onclick=goMenu;$('shopBack').onclick=()=>shopFrom==='map'?goMap():goMenu();$('dexBack').onclick=goMenu;
 
-const starsOf=i=>save.stars[i]||0;const unlocked=i=>true;
+const starsOf=i=>save.stars[i]||0;const unlocked=i=>save.dev||i===0||starsOf(i-1)>0;
 function goMap(){
   rotateMissions();state='map';show('map');const box=$('chapters');box.innerHTML='';
   CH.forEach((ch,ci)=>{
@@ -1529,7 +1559,7 @@ function goMap(){
   const sh=document.createElement('button');sh.type='button';sh.className='btn gold';sh.textContent='Магазин';sh.onclick=()=>openShop('up','map');box.appendChild(sh);
 }
 function openIntro(i){
-  lvlIdx=i;lvl=LV[i];buildWorld(lvl);resetLevel();state='intro';AU.chapter=CH[lvl.ch].key;
+  lvlIdx=i;lvl=LV[i];buildWorld(lvl);resetLevel();state='intro';AU.chapter=CH[lvl.ch].key;AU.theme=CH[lvl.ch].id;
   $('inChapter').textContent=`Глава ${lvl.ch+1} · ${CH[lvl.ch].name} · Раунд ${i+1}`;$('inName').textContent=lvl.n;const cid=CH[lvl.ch].id,rk=cid+'_r'+(i%4+1);$('inPhoto').src=PH[rk]||PH[cid];$('inCap').textContent=(CAPS[cid]||[])[i%4]||CH[lvl.ch].cap;
   $('inGoal').textContent=`Накорми ${lvl.goals[0]}% парка за ${lvl.time} секунд. Звёзды: ${lvl.goals.join('% · ')}%`;const hr=hisRec(i);$('inRec').hidden=hr==null;$('inRec').textContent=hr==null?'':`Лёша выбил ${hr}% · побьёшь?`;$('inTip').textContent=lvl.tip||'';
   const hotCh=['como','salerno'].includes(CH[lvl.ch].id);if(hotCh&&outfit('top',save.eq.top).kind==='coat')$('inTip').textContent+=' Жарко: в магазине есть платья и топы.';
@@ -1583,7 +1613,7 @@ function openChest(){state='chest';show('chestScr');$('chestGo').hidden=true;$('
       b.innerHTML=`<span class="ic">${ic}</span><span>${txt}</span>`;persist();refreshAcorns();sfx.buy();haptic(20);$('chestTip').textContent=txt;$('chestGo').hidden=false;};box.appendChild(b);});}
 $('chestGo').onclick=()=>{const f=afterChest;afterChest=null;f?f():goMap();};
 const ENDLESS={n:'Прогулка без конца',ch:0,time:1e9,rivals:['babka','boy','pigeons','dvornik'],dogs:2,goals:[30,50,70],endless:true,tip:''};
-function startEndless(){ENDLESS.ch=Math.floor(Date.now()/864e5)%CH.length;lvl=ENDLESS;ENDLESS.rivals=CH[ENDLESS.ch].rivals.slice(0,4);while(ENDLESS.rivals.length<4)ENDLESS.rivals.push(CH[ENDLESS.ch].rivals[0]);lvlIdx=-1;buildWorld(lvl);resetLevel();rPeak=0;AU.chapter=CH[lvl.ch].key;audioInit();audioResume();state='play';show(null);lvl.goals.forEach((g,i)=>$('s'+(i+1)).style.left=g+'%');last=performance.now();sayGuy(pick(HIS),2.8);toast('Три жизни. Побей рекорд: '+save.endlessBest.toFixed(0)+'%');}
+function startEndless(){ENDLESS.ch=Math.floor(Date.now()/864e5)%CH.length;lvl=ENDLESS;ENDLESS.rivals=CH[ENDLESS.ch].rivals.slice(0,4);while(ENDLESS.rivals.length<4)ENDLESS.rivals.push(CH[ENDLESS.ch].rivals[0]);lvlIdx=-1;buildWorld(lvl);resetLevel();rPeak=0;AU.chapter=CH[lvl.ch].key;AU.theme=CH[lvl.ch].id;audioInit();audioResume();state='play';show(null);lvl.goals.forEach((g,i)=>$('s'+(i+1)).style.left=g+'%');last=performance.now();sayGuy(pick(HIS),2.8);toast('Три жизни. Побей рекорд: '+save.endlessBest.toFixed(0)+'%');}
 $('endlessBtn').onclick=startEndless;
 /* bouquet */
 function drawFlower(c,id,x,y,sc,ph){
@@ -1711,7 +1741,9 @@ function renderMenu(dt){return;const c=menuCtx;c.setTransform(2,0,0,2,0,0);
 /* ================= loop ================= */
 let last=performance.now();
 function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;try{update(dt);render(dt);renderMinimap(dt);renderMini(dt);updateHud();renderMenu(dt);}catch(e){console.error(e);}requestAnimationFrame(frame);}
-lvl=LV[0];buildWorld(lvl);resetLevel();goMenu();requestAnimationFrame(frame);
+lvl=LV[0];buildWorld(lvl);resetLevel();
+if(!save.splashSeen){state='splash';$('splashPhoto').src=PH.menu;show('splash');$('splashGo').onclick=()=>{save.splashSeen=true;persist();audioInit();audioResume();goMenu();};}else goMenu();
+requestAnimationFrame(frame);
 window.__belochki={get props(){return W.props},get players(){return players},openIntro,go:()=>$('inGo').click(),get state(){return state},finishLevel,save:()=>save,K,pct,capture:()=>{const k=K();return k},startMini,miniTap,MG};
 })();
 
