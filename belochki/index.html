@@ -380,6 +380,7 @@ const HIS_REC=[58,55,52,50, 54,51,49,47, 52,50,47,45, 50,48,45,43, 48,46,43,41, 
 function holidayToday(){const d=new Date();if(d.getMonth()===11&&d.getDate()===23)return {id:'bday',txt:'С днём рождения, Катюша! 🎂',mult:2};if(d.getMonth()===3&&d.getDate()===25)return {id:'anniv',txt:'С годовщиной, моя любовь! 💍',mult:2};if(d.getDate()===25)return {id:'m25',txt:'25-е число: наш маленький праздник 💕',mult:1.5};return null;}
 const GUYFITS={summer:{name:'Белая рубашка',top:'#f6f3ea',dk:'#d9d4c8',legs:'#c9b89a',shoe:'#f2f2f2',short:false},polo:{name:'Чёрное поло',top:'#1e1e22',dk:'#111',legs:'#c9b89a',shoe:'#1e1e22',polo:true},tee:{name:'Оливковая рубашка',top:'#6b7a5a',dk:'#52604a',legs:'#1e1e22',shoe:'#f2f2f2'},puffer:{name:'Серый пуховик',top:'#6a6f69',dk:'#585d57',legs:'#303744',shoe:'#1e1e22',puffer:true},hoodie:{name:'Серый худи с кожанкой',top:'#2a2a2e',dk:'#1a1a1e',legs:'#2a2a30',shoe:'#1e1e22',hoodie:true},polonavy:{name:'Синее поло с васильком',top:'#1f2f5a',dk:'#152142',legs:'#c9b89a',shoe:'#f2f2f2',polo:true,flower:true}};
 const GUYBYCH={warsaw:'summer',como:'polo',salerno:'tee',paris:'tee',koeln:'polo',moldova:'summer',belarus:'polonavy',moscow:'puffer'};
+const GLASHA_NOTE='Глаша всегда рядом. Она бы тоже тебя обняла.';
 const FLOWERS=[{id:'rose',name:'Белые кустовые розы'},{id:'peony',name:'Пионы'},{id:'tulip',name:'Тюльпаны'},{id:'chamomile',name:'Ромашки'},{id:'lavender',name:'Лаванда'},{id:'eustoma',name:'Эустома'}];
 const UPG=[
   {id:'speed',name:'Носки Mark Formelle',desc:l=>`Катя бегает на ${l*6}% быстрее`,max:8,base:25},
@@ -434,6 +435,8 @@ const TYPES={
   kitten:{kind:'cat',name:'Котёнок',rar:'Нечастый',w:10,mult:2,scale:.65,body:'#e8d2b8',stripe:'#cdb496',desc:'Пищит и путается под ногами. Двойные очки.'},
   catb:{kind:'cat',name:'Чёрный кот',rar:'Редкая',w:4,mult:3,body:'#26222a',stripe:'#26222a',desc:'Приносит удачу. Тройные очки.'},
   goldcat:{kind:'cat',name:'Золотой кот',rar:'Легенда',w:1.5,mult:10,glow:true,body:'#e8b33a',stripe:'#f2c94c',desc:'Легенда Молдовы. ×10 очков и 5 желудей.',legend:true},
+  beaver:{kind:'beaver',name:'Бобёр',rar:'Нечастый',w:8,mult:2,body:'#6a4a32',tail:'#3a2a20',belly:'#8a6a4a',desc:'Живёт у Витьбы, грызёт ветки. Двойные очки.',only:'belarus'},
+  glasha:{kind:'glasha',name:'Глаша',rar:'Особенная',w:0,mult:0,scale:1.15,body:'#8a8f9a',head:'#9298a3',belly:'#a3a8b2',desc:'Катина кошечка. Серо-голубая британка с самым строгим взглядом. Всегда с нами.',glasha:true},
   zubr:{kind:'zubr',name:'Зубр',rar:'Легенда',w:1.2,mult:10,scale:1.6,body:'#5a3f2e',desc:'Хозяин белорусских лесов. ×10 очков и 5 желудей.',legend:true,only:'belarus'},
 };
 const DEX_ORDER=Object.keys(TYPES);
@@ -482,7 +485,7 @@ const CH=[
   {id:'moldova',name:'Молдова',cap:'С любимой на Днестре',sub:'Кишинёв, Тирасполь, Бендеры: виноградники и крепость',critter:'cat',style:'vineyard',sea:'left',river:true,props:['tower','well'],ground:'#9a8a52',patch:[150,175,140,160,70,95],leaves:['#c4a84a','#d9bd62','#9aa050','#b08a3a'],canopy:['#6a9a3a','#7fae48','#9ac05a','#b5c470'],fall:['#d9bd62'],tree:'vine',sun:true,key:2,landmark:'bender',
     rivals:['roma','romaman','geese'],pu:{time:['Мамалыга','mamaliga'],gold:['Виноград','grapes'],speed:['Камри','camry']},
     tips:['Котики вместо белочек. Виноградники вокруг, крепость на горизонте.','Гуси шипят и бегут напролом. Цыганка гадает, цыган играет, оба отжимают землю.','Бордовая Камри на карте: садись и гони! Мамалыга даёт секунды.','Закат над Бендерами. Все собрались: отнимай и не жадничай.']},
-  {id:'belarus',name:'Беларусь',cap:'В родном Витебске',sub:'Витебск и Минск: парк Челюскинцев, кофе из «Варки»',critter:'squirrel',zubr:true,style:'vitebsk',props:['chagall','varka'],ground:'#7a8a4a',patch:[100,125,120,145,55,75],leaves:['#a7b56a','#c9b24a','#d9a93a','#8fa05a'],canopy:['#8fae4a','#b5bf5a','#d9b24a','#c98b2e'],fall:['#d9b24a','#c98b2e'],tree:'leafy',key:0,landmark:'vitebsk',
+  {id:'belarus',name:'Беларусь',cap:'В родном Витебске',sub:'Витебск и Минск: парк Челюскинцев, кофе из «Варки»',critter:'squirrel',zubr:true,beavers:true,style:'vitebsk',props:['chagall','varka'],ground:'#7a8a4a',patch:[100,125,120,145,55,75],leaves:['#a7b56a','#c9b24a','#d9a93a','#8fa05a'],canopy:['#8fae4a','#b5bf5a','#d9b24a','#c98b2e'],fall:['#d9b24a','#c98b2e'],tree:'leafy',key:0,landmark:'vitebsk',
     rivals:['dvornik','pigeons','photog'],pu:{time:['Кофе из «Варки»','coffee'],gold:['Драники','draniki'],speed:['Моноколесо','wheel']},
     tips:['Начало осени. Белочки парка Челюскинцев и где-то бродит зубр: накорми его, он легенда.','Кофе из «Варки» даёт секунды. Драники удваивают захват.','Дворник метёт дорожки, фотограф ловит кадр. Голуби как всегда.','Витебск: лестница к собору. Большой финал Беларуси.']},
   {id:'moscow',name:'Нескучный сад',cap:'Свидание в саду',sub:'Москва, ноябрь: белочки, синички и грецкие орехи',critter:'squirrel',props:['feeder','rotunda'],ground:'#8b6440',patch:[95,118,112,132,52,70],leaves:['#a0522d','#b8732f','#c98b2e','#e0a93a','#7b4a2a','#d9b24a','#8e5a33','#b0662c'],canopy:['#e3b23c','#d99a2b','#f0c75a','#c9822a','#b9a03a','#e8a83a'],fall:['#e3b23c','#d99a2b','#c9822a','#f0c75a','#b8732f'],tree:'leafy',key:0,landmark:'moscow',
@@ -948,7 +951,35 @@ function drawZubr(c,s){
   circ(c,13,-15.5,1.1,'#1b120c');circ(c,15.5,-13,1,'#1b120c');
   c.restore();critterHeart(c,s,sc);
 }
-function drawCritter(c,s){const kind=TYPES[s.type].kind;if(kind==='duck')drawDuck(c,s);else if(kind==='chi')drawChi(c,s);else if(kind==='rat')drawRat(c,s);else if(kind==='cat')drawCat(c,s);else if(kind==='zubr')drawZubr(c,s);else drawSquirrel(c,s);}
+function drawBeaver(c,s){
+  const ty=TYPES[s.type],sc=ty.scale||1;const wad=s.moving?Math.sin(s.hop*.9)*1.5:0;
+  shadow(c,s.x,s.y,11*sc,3.5*sc);
+  c.save();c.translate(s.x,s.y-Math.abs(wad)*.5);c.scale(s.face*sc,sc);
+  c.fillStyle=ty.tail;c.beginPath();c.ellipse(-12,-4,8,4,0.2,0,7);c.fill();c.strokeStyle='rgba(0,0,0,.25)';c.lineWidth=.6;for(let i=-17;i<-7;i+=3){c.beginPath();c.moveTo(i,-6);c.lineTo(i+1.5,-2);c.stroke();}
+  c.fillStyle=ty.body;c.fillRect(-6,-4,3,4);c.fillRect(1,-4,3,4);
+  ell(c,0,-9,10,7,ty.body);ell(c,3,-7,5,4,ty.belly);
+  circ(c,8,-14,5.5,ty.body);circ(c,5,-19,1.8,ty.body);circ(c,10,-19.5,1.8,ty.body);
+  circ(c,12.5,-13,1.3,'#1b120c');circ(c,9.5,-15,1.3,'#1b120c');c.fillStyle='#f6f3ea';c.fillRect(11,-11.5,1.6,2.4);c.fillRect(12.8,-11.5,1.6,2.4);
+  if(s.state==='eat'||Math.sin(T*2+s.id)>.6){c.strokeStyle='#8a5a2b';c.lineWidth=1.6;c.beginPath();c.moveTo(10,-10);c.lineTo(17,-6);c.stroke();}
+  c.restore();critterHeart(c,s,sc);
+}
+function drawGlasha(c,s){
+  const ty=TYPES[s.type],sc=ty.scale||1;
+  shadow(c,s.x,s.y,11*sc,3.5*sc);
+  c.save();c.translate(s.x,s.y);c.scale(s.face*sc,sc);
+  c.strokeStyle=ty.body;c.lineWidth=3;c.lineCap='round';c.beginPath();c.moveTo(-8,-4);c.quadraticCurveTo(-15,-6,-14,-14+Math.sin(T*1.5+s.id)*2);c.stroke();
+  ell(c,0,-9,10,8.5,ty.body);ell(c,2,-7,6,5,ty.belly);
+  c.fillStyle=ty.body;c.fillRect(-6,-3,3.5,3);c.fillRect(2,-3,3.5,3);
+  circ(c,4,-18,7.5,ty.head);tri(c,[-1,-23],[0,-29],[4,-24],ty.head);tri(c,[8,-24],[9.5,-29],[10,-23],ty.head);
+  ell(c,6,-15,3.2,2.4,'#9ea3ad');
+  c.fillStyle='#d8c860';c.beginPath();c.ellipse(1.5,-19,2,1.4,0,0,7);c.fill();c.beginPath();c.ellipse(7,-19,2,1.4,0,0,7);c.fill();
+  c.fillStyle='#1b120c';c.fillRect(1,-19.6,1.2,1.4);c.fillRect(6.5,-19.6,1.2,1.4);
+  c.strokeStyle='#6a6f7a';c.lineWidth=1;c.beginPath();c.moveTo(-1,-21.5);c.lineTo(3,-20.5);c.moveTo(9.5,-21.5);c.lineTo(5.5,-20.5);c.stroke();
+  circ(c,4.3,-15.6,1,'#8a7a82');c.strokeStyle='rgba(255,255,255,.6)';c.lineWidth=.6;c.beginPath();c.moveTo(6,-15);c.lineTo(12,-16);c.moveTo(6,-14.5);c.lineTo(12,-13.5);c.stroke();
+  c.restore();
+  if(s.fedT>0){const a=.5+.5*Math.sin(T*2+s.id);drawHeart(c,s.x,s.y-34-a*2,5,`rgba(240,90,100,${(.4+a*.4).toFixed(2)})`);}
+}
+function drawCritter(c,s){const kind=TYPES[s.type].kind;if(kind==='beaver'){drawBeaver(c,s);return;}if(kind==='glasha'){drawGlasha(c,s);return;}if(kind==='duck')drawDuck(c,s);else if(kind==='chi')drawChi(c,s);else if(kind==='rat')drawRat(c,s);else if(kind==='cat')drawCat(c,s);else if(kind==='zubr')drawZubr(c,s);else drawSquirrel(c,s);}
 
 /* ================= extra rivals ================= */
 function humanBase(c,r,legCol,shoeCol,bodyCol,s){
@@ -1206,6 +1237,7 @@ function onCaptureKatya(res){
   if(res.trailN>=70)mission('loop70',1);if(res.trailN>=40)mission('loop40',1);stolenRound+=res.stolen;if(stolenRound>=30)mission('steal30',1);
   let pts=Math.round(res.gained*2*mult+res.stolen*3*mult);let nFed=0,fedPts=0;
   for(const s of squirrels){if(s.fedT>0||s.state==='follow')continue;const [cx,cy]=cellOf(s.x,s.y);const i=cy*N+cx;
+    if(s.state==='sit'&&res.inside(i)&&owner[i]===1){s.fedT=1e9;if(!save.dex.glasha){save.dex.glasha=1;newDex.push('glasha');toast('Глаша в Белкопедии');}popup(s.x,s.y-44,'Мяу','#fbf0d9',14);sayGuy(GLASHA_NOTE,5);for(let h=0;h<6;h++)hearts.push({x:s.x+R(-8,8),y:s.y-24,vx:R(-20,20),vy:R(-60,-40),t:0,life:R(1.2,1.8)});continue;}
     if(res.inside(i)&&owner[i]===1){nFed++;const ty=TYPES[s.type];fedPts+=ty.mult*15*mult;s.fedT=25;s.state='follow';s.grace=.8;train.push(s);addDex(s.type);
       if(ty.time){timeLeft+=ty.time;popup(s.x,s.y-40,`+${ty.time} сек`,'#f2e05a',14);}if(ty.legend){lvlAcorns+=5;popup(s.x,s.y-40,'+5 желудей','#f2c94c',14);mission('gold',1);}
       hearts.push({x:s.x,y:s.y-20,vx:R(-20,20),vy:R(-60,-40),t:0,life:1.2});}}
@@ -1276,6 +1308,8 @@ function resetLevel(){
   if(save.boost){const b=save.boost;save.boost=null;persist();if(b==='shield')shields++;else if(b==='wheel')scootT=12;else if(b==='fever')feverT=S.fever+4;else if(b==='time')timeLeft+=15;toast('Бонус из сундука: '+BOOSTN[b]);}
   combo=0;comboT=0;feverT=feverT>0?feverT:0;scootT=scootT>0?scootT:0;whistleT=0;goldNext=false;guyLineT=R(16,26);wakeT=0;
   squirrels=[];for(let i=0;i<26+Math.floor(LV.indexOf(L)/3);i++)squirrels.push(makeSquirrel(i<12));tutI=0;tutT=0;
+  if(W.ch.beavers){for(let i=0;i<4;i++){const sq=makeSquirrel();sq.type='beaver';sq.x=i%2?G0+40+R(0,60):WW-G0-40-R(0,60);sq.y=GY0+R(60,GW-60);sq.tx=sq.x;sq.ty=sq.y;sq.home={x:sq.x,y:sq.y};squirrels.push(sq);}}
+  if(W.ch.id==='moscow'&&!endless){const g=makeSquirrel();g.type='glasha';g.x=guy.x+CS*4;g.y=guy.y-CS*3;g.tx=g.x;g.ty=g.y;g.face=1;g.state='sit';squirrels.push(g);}
   train=[];for(let i=0;i<S.pocket;i++){const sq=squirrels[i];sq.x=k.x-20-i*16;sq.y=k.y;sq.state='follow';sq.fedT=1e9;sq.followT=-1e9;train.push(sq);}
   dogs=[];for(let i=0;i<L.dogs;i++)dogs.push(makeDog());
   pus=[];popups=[];hearts=[];prints=[];flashes=[];train=[];
@@ -1379,7 +1413,8 @@ function update(rdt){
   // squirrels
   for(const s of squirrels){
     if(s.fedT>0)s.fedT-=dt;if(s.grace>0)s.grace-=dt;
-    if(s.state==='idle'){s.t-=dt;if(s.t<=0){s.t=R(1,3.5);if(Math.random()<.7){let tx=s.x+R(-70,70),ty=s.y+R(-50,50);const dk=Math.hypot(k.x-s.x,k.y-s.y);if(dk>CS*14&&Math.random()<.5){tx=s.x+(k.x-s.x)*.25;ty=s.y+(k.y-s.y)*.25;}
+    if(s.state==='sit'){continue;}
+    if(s.state==='idle'){s.t-=dt;if(s.t<=0){s.t=R(1,3.5);if(Math.random()<.7){let tx=s.x+R(-70,70),ty=s.y+R(-50,50);if(s.home&&TYPES[s.type].kind==='beaver'){tx=s.home.x+R(-50,50);ty=s.home.y+R(-120,120);}const dk=Math.hypot(k.x-s.x,k.y-s.y);if(dk>CS*14&&Math.random()<.5){tx=s.x+(k.x-s.x)*.25;ty=s.y+(k.y-s.y)*.25;}
           if(S.magnet>0&&Math.random()<S.magnet){const i=nearestOwn(k);if(i>=0){tx=s.x+(cx2w(i%N)-s.x)*.4;ty=s.y+(cy2w((i/N)|0)-s.y)*.4;}}
           s.tx=clamp(tx,G0+10,WW-G0-10);s.ty=clamp(ty,GY0+20,WH-G0-10);}else{s.tx=s.x;s.ty=s.y;}}
       moveTo(s,s.tx,s.ty,70,dt);}
@@ -1502,7 +1537,8 @@ function renderMinimap(dt){miniT-=dt;if(miniT>0||state!=='play')return;miniT=.2;
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){const o=owner[y*N+x];if(!o)continue;c.fillStyle=players[o-1].col;c.fillRect(x*s,y*s,s+.5,s+.5);}
   for(const p of players){for(const i of p.trail){c.fillStyle=p.id===1?'#fff2c0':p.dk;c.fillRect((i%N)*s,((i/N)|0)*s,s,s);}}
   for(const p of players){const [x,y]=cellOf(p.x,p.y);circ(c,x*s+s/2,y*s+s/2,p.id===1?5:4,p.id===1?'#fff':p.dk);if(p.id===1)circ(c,x*s+s/2,y*s+s/2,3,'#b8492a');}
-  for(const d of dogs){const [x,y]=cellOf(d.x,d.y);circ(c,x*s+s/2,y*s+s/2,3,'#ff6b4a');}}
+  for(const d of dogs){const [x,y]=cellOf(d.x,d.y);circ(c,x*s+s/2,y*s+s/2,3,'#ff6b4a');}
+  for(const q of squirrels){if(TYPES[q.type].legend&&q.fedT<=0&&q.state==='idle'){const [x,y]=cellOf(q.x,q.y);const px=x*s+s/2,py=y*s+s/2;c.fillStyle='#ffd13a';c.beginPath();for(let i=0;i<5;i++){const a=-Math.PI/2+i*Math.PI*2/5;c.lineTo(px+Math.cos(a)*5,py+Math.sin(a)*5);const a2=a+Math.PI/5;c.lineTo(px+Math.cos(a2)*2.2,py+Math.sin(a2)*2.2);}c.closePath();c.fill();}}}
 
 /* ================= HUD ================= */
 const hc={};function setT(id,v){if(hc[id]!==v){hc[id]=v;$(id).textContent=v;}}function setH(id,v){if(hc['h'+id]!==v){hc['h'+id]=v;$(id).hidden=v;}}
@@ -1712,10 +1748,10 @@ function buy(key){const [kind,a,b]=key.split(':');let price=0;
 /* dex */
 function openDex(){state='dex';show('dexScr');const g=$('dexGrid');g.innerHTML='';let seen=0;
   DEX_ORDER.forEach(id=>{const ty=TYPES[id],n=save.dex[id]||0;if(n)seen++;const d=document.createElement('div');d.className='dex-card';
-    d.innerHTML=`<canvas width="192" height="160"></canvas><span class="rar">${ty.rar}</span><b>${n?ty.name:'???'}</b><small>${n?ty.desc:'Ещё не встречалась. Ищи в парках!'}</small><small><b>${n?'Накормлено: '+n:''}</b></small>`;g.appendChild(d);
-    const c=d.querySelector('canvas').getContext('2d');c.setTransform(2,0,0,2,0,0);c.save();c.translate(50,74);const zs=id==='zubr'?1.3:2;c.scale(zs,zs);drawCritter(c,{id:1,type:id,x:0,y:0,face:1,hop:0,moving:false,state:'idle',fedT:0});c.restore();
+    d.innerHTML=`<canvas width="192" height="160"></canvas><span class="rar">${ty.rar}</span><b>${n?ty.name:'???'}</b><small>${n?ty.desc:'Ещё не встречалась. Ищи в парках!'}</small><small><b>${n&&!ty.glasha?'Накормлено: '+n:''}</b></small>`;g.appendChild(d);
+    const c=d.querySelector('canvas').getContext('2d');c.setTransform(2,0,0,2,0,0);c.save();c.translate(50,74);const zs=id==='zubr'?1.3:id==='glasha'?1.7:2;c.scale(zs,zs);drawCritter(c,{id:1,type:id,x:0,y:0,face:1,hop:0,moving:false,state:'idle',fedT:0});c.restore();
     if(!n){c.globalCompositeOperation='source-atop';c.fillStyle='#5a4636';c.fillRect(0,0,96,80);c.globalCompositeOperation='source-over';}});
-  $('dexCount').textContent=`Найдено ${seen} из ${DEX_ORDER.length}. Зверёк попадает в Белкопедию, когда оказывается на твоей накормленной земле. Утки живут на Комо, чихуахуа в Салерно, крыски в Париже, коты в Молдове, зубр в Беларуси. Белка-летяга прячется во всех беличьих парках.`;}
+  $('dexCount').textContent=`Найдено ${seen} из ${DEX_ORDER.length}. Зверёк попадает в Белкопедию, когда оказывается на твоей накормленной земле. Утки живут на Комо, чихуахуа в Салерно, крыски в Париже, коты в Молдове, зубр в Беларуси. Белка-летяга прячется во всех беличьих парках, бобры живут у реки в Витебске. Легендарные отмечены звёздочкой на миникарте.`;}
 
 /* ================= input ================= */
 cv.addEventListener('pointerdown',e=>{if(state!=='play')return;joy.active=true;joy.id=e.pointerId;joy.ox=joy.cx=e.clientX;joy.oy=joy.cy=e.clientY;try{cv.setPointerCapture(e.pointerId);}catch(_){}});
