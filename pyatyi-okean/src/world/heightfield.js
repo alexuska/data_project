@@ -151,7 +151,7 @@ const isles = [
   },
   {
     id: ISLE.MAYAK, seed: 51, warpA: 110, warpL: 900, warpB: 50, warpL2: 300, shelf: 420, k: 260,
-    blobs: [B(AP.mayak.x, AP.mayak.z, 1350, 560, 20), B(P.lighthouse.x, P.lighthouse.z, 420, 360, 0), B(-9900, 15850, 500, 300, -50)],
+    blobs: [B(AP.mayak.x, AP.mayak.z, 1350, 560, 20), B(P.lighthouse.x, P.lighthouse.z, 400, 340, 0), B(-10100, 15950, 680, 250, 113)],
     height(x, z, d) {
       let h = shore(d, 110, 8) + fbm2(x / 400, z / 400, 3, 53) * 5 * smoothstep(0, 200, d);
       h += 34 * bump((x - P.lighthouse.x) / 300, (z - P.lighthouse.z) / 300);
@@ -240,33 +240,39 @@ const landAirports = AIRPORTS.filter((a) => a.kind !== 'carrier');
 
 function applyAirports(x, z, h) {
   for (const a of landAirports) {
-    const R = 10500;
+    const R = 12500;
     if (Math.abs(x - a.x) > R || Math.abs(z - a.z) > R) continue;
-    // коридоры подхода: ограничение высоты рельефа вдоль продолжения оси полосы
+    const gn = a.id === 'gnezdo';
     for (const rw of a.runways) {
       const d = headingVec(rw.heading);
       const dx = x - rw.cx, dz = z - rw.cz;
       const al = dx * d.x + dz * d.z, ac = Math.abs(dx * -d.z + dz * d.x);
       const s = Math.abs(al) - rw.length / 2;
-      if (s <= 0 || s > 9000) continue;
-      const gn = a.id === 'gnezdo';
-      const far = gn ? 4200 : 9000;
-      if (s > far) continue;
-      const w = gn ? 230 + 0.2 * s : 260 + 0.24 * s;
-      if (ac > w * 2.2) continue;
-      let lim;
-      if (gn) lim = a.elevation - clamp((s - 80) * 0.95, -6, 330) - Math.max(0, s - 500) * 0.05;
-      else lim = a.elevation + 4 + Math.max(0, s - 250) * 0.03;
+      if (s > 9600 || ac > 1700) continue;
+      if (s <= -150) {
+        // вдоль полосы: окрестности открыты, холмы поднимаются в стороны полого (у Гнезда — круче)
+        const lim = a.elevation + 4 + Math.max(0, ac - (gn ? 150 : 260)) * (gn ? 0.45 : 0.12);
+        if (h > lim) h = lim + (h - lim) * smoothstep(900, 1650, ac);
+        continue;
+      }
+      // коридор захода/взлёта: ±600 м (с запасом) на 8 км — рельеф ниже глиссады 3° с запасом
+      const lim = a.elevation + Math.max(0, s - 150) * 0.027;
       if (h > lim) {
-        const wc = (1 - smoothstep(w * 0.55, w * 2.2, ac)) * (1 - smoothstep(far * 0.7, far, s));
+        const wc = (1 - smoothstep(720, 1400, ac)) * (1 - smoothstep(8400, 9600, s));
         h = lim + (h - lim) * (1 - wc);
+      }
+      // Орлиное Гнездо: обрыв сразу за торцами
+      if (gn && s < 4200) {
+        const w = 230 + 0.2 * s;
+        const cl = a.elevation - clamp((s - 80) * 0.95, -6, 330) - Math.max(0, s - 500) * 0.05;
+        if (h > cl && ac < w * 2.2) {
+          const wc = (1 - smoothstep(w * 0.55, w * 2.2, ac)) * (1 - smoothstep(2900, 4200, s));
+          h = cl + (h - cl) * (1 - wc);
+        }
       }
     }
     const fw = flatWeight(a, x, z);
-    if (fw > 0) {
-      // у воды не насыпаем «дамбу» далеко в море: вес падает на глубине (кроме самой площадки)
-      h = lerp(h, a.elevation, fw >= 0.999 ? 1 : fw * fw * (3 - 2 * fw));
-    }
+    if (fw > 0) h = lerp(h, a.elevation, fw >= 0.999 ? 1 : fw * fw * (3 - 2 * fw));
   }
   return h;
 }

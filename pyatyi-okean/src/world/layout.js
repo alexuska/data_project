@@ -59,7 +59,7 @@ export const AIRPORTS = [
 export const POIS = [
   { id: 'city_yasny', name: 'город Ясный', kind: 'city', x: 2500, z: 5200 },
   { id: 'port_gavan', name: 'порт Тихой Гавани', kind: 'port', x: 12800, z: 10800 },
-  { id: 'lighthouse', name: 'Старый маяк', kind: 'lighthouse', x: -10200, z: 16100 },
+  { id: 'lighthouse', name: 'Старый маяк', kind: 'lighthouse', x: -10330, z: 16520 },
   { id: 'volcano', name: 'вулкан Дымный', kind: 'volcano', x: 15500, z: -6500 },
   { id: 'peak', name: 'пик Орлиный', kind: 'peak', x: 5200, z: -10200 },
   { id: 'dam', name: 'плотина Верхняя', kind: 'dam', x: -4500, z: -6000 },

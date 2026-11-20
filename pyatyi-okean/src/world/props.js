@@ -321,13 +321,13 @@ export function createProps(G, world, hf, mats, lights) {
   const wakes = new Builder();
   function wake(x, z, hdg, w, len) {
     wakes.setFrame(x, 0.3, z, hdg);
-    const a = [1, 1, 1], b = [0, 0, 0];
+    const a = [0.55, 0.55, 0.55], b = [0, 0, 0];
     const v = (px, pz, c) => { wakes._v(px, 0, pz, c); };
     // центральная пена
     v(-w, 0, a); v(w, 0, a); v(w * 1.5, len * 0.5, b); v(-w, 0, a); v(w * 1.5, len * 0.5, b); v(-w * 1.5, len * 0.5, b);
     for (const s of [-1, 1]) {
-      const m = shade(a, 0.55);
-      v(s * w * 0.9, -len * 0.03, m); v(s * (w * 1.4 + len * 0.2), len, b); v(s * (w * 0.9 + len * 0.165), len, b);
+      const m = [0.6, 0.6, 0.6];
+      v(s * w * 0.9, -len * 0.03, m); v(s * (w * 1.4 + len * 0.2), len, b); v(s * (w * 1.1 + len * 0.178), len, b);
     }
   }
   function ship(B, x, z, hdg, kind, moving) {
@@ -413,7 +413,7 @@ export function createProps(G, world, hf, mats, lights) {
     wake(CARRIER.x - Math.sin(CARRIER.heading) * 150, CARRIER.z + Math.cos(CARRIER.heading) * 150, CARRIER.heading, 17, 620);
     addMesh(B, mats.building, 'ships').frustumCulled = false;
   }
-  const wakeMat = patchMaterial(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  const wakeMat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
   const wakeMesh = addMesh(wakes, wakeMat, 'wakes', 3);
   if (wakeMesh) wakeMesh.frustumCulled = false;
 
@@ -593,7 +593,7 @@ export function createProps(G, world, hf, mats, lights) {
       beam.material.uniforms.uOp.value = op;
     }
     // кильватерные следы светлеют/темнеют вместе с дневным светом
-    const l = 0.01 + 0.055 * env.daylight;
+    const l = (0.006 + 0.04 * env.daylight) * (1 - env.inCloud);
     wakeMat.color.setRGB(l, l, l);
     // деревья: дальние блоки не рисуем
     const R = U.uTreeR.value.y + 5800;

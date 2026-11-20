@@ -72,7 +72,7 @@ export function createLights(G, group) {
               float minPx = (1.3 + 1.1 * uOn) * uPx;
               vis *= clamp(px / minPx, 0.0, 1.0) * 0.75 + 0.25;
               vis *= 1.0 - smoothstep(26000.0, 34000.0, d);
-              gl_PointSize = clamp(px, minPx, 46.0 * uPx);
+              gl_PointSize = clamp(px, minPx, mix(16.0, 46.0, uOn) * uPx);
               vCol = c * vis;
               gl_Position = projectionMatrix * mv;
               if (vis < 0.004) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
