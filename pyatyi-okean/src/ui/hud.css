@@ -14,31 +14,24 @@
 }
 .hud.hud-lefty { direction: rtl; }
 .hud[hidden], .hud [hidden], .hud-photo[hidden] { display: none !important; }
-.hud-top, .hud-dash, .hud-warn, .hud-toasts, .hud-land, .hud-markers, .hud-colli, .hud-ts { direction: ltr; }
+.hud-top, .hud-dash, .hud-warn, .hud-toasts, .hud-land, .hud-markers, .hud-colli, .hud-ts, .hud-radio { direction: ltr; }
 .hud canvas { display: block; direction: ltr; }
 .hud-camfade { background: var(--night); opacity: 0; }
 
-/* ---------- верх: курс, цель, радио ---------- */
+/* ---------- верх: курс; карточка задачи — ui/hud-guide.css (слева сверху, рядом с мини-картой) ---------- */
 .hud-top {
   position: absolute; top: calc(var(--sa-t) + 8 * var(--u)); left: 50%; transform: translateX(-50%);
   display: flex; flex-direction: column; align-items: center; gap: calc(4 * var(--u));
   width: calc(330 * var(--u)); max-width: 92vw;
 }
-.hud-obj {
-  display: flex; align-items: baseline; gap: calc(7 * var(--u)); max-width: 100%; box-sizing: border-box;
-  padding: calc(3 * var(--u)) calc(11 * var(--u)) calc(4 * var(--u));
-  background: var(--hud-panel); border: 1px solid var(--glass-line); border-left: calc(3 * var(--u)) solid var(--dawn);
-  border-radius: calc(7 * var(--u));
-  font-family: var(--f-body); font-size: calc(12 * var(--u)); font-weight: 500; line-height: 1.25;
-}
-.hud-obj b { font-family: var(--f-mono); font-size: calc(10 * var(--u)); color: var(--dawn-2); font-weight: 600; white-space: nowrap; }
-.hud-obj.is-new { animation: hud-flash 1.2s ease-out; }
+/* радио — справа, между верхними кнопками и РУД: атмосфера, не закрывает карточку и подписи маркеров */
 .hud-radio {
-  max-width: 100%; box-sizing: border-box; padding: calc(3 * var(--u)) calc(10 * var(--u)) calc(4 * var(--u));
-  background: var(--hud-panel); border-radius: calc(7 * var(--u));
-  font-family: var(--f-body); font-size: calc(12 * var(--u)); line-height: 1.3; text-align: center;
+  position: absolute; top: calc(var(--sa-t) + 108 * var(--u)); inset-inline-end: calc(var(--sa-r) + 76 * var(--u));
+  width: max-content; max-width: calc(220 * var(--u)); box-sizing: border-box; padding: calc(3 * var(--u)) calc(9 * var(--u)) calc(4 * var(--u));
+  background: var(--hud-panel); border-radius: calc(7 * var(--u)); border-inline-start: calc(2 * var(--u)) solid var(--sky);
+  font-family: var(--f-body); font-size: calc(11.5 * var(--u)); line-height: 1.3; text-align: start;
 }
-.hud-radio b { font-family: var(--f-display); font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky); margin-right: calc(6 * var(--u)); font-size: calc(11 * var(--u)); }
+.hud-radio b { display: block; font-family: var(--f-display); font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky); font-size: calc(10 * var(--u)); }
 .hud-radio b::after { content: ':'; }
 .hud-radio.is-new { animation: hud-rise 0.25s ease-out; }
 
@@ -49,7 +42,7 @@
 
 /* ---------- предупреждения, сообщения ---------- */
 .hud-warn {
-  position: absolute; top: 29%; left: 50%; transform: translateX(-50%); white-space: nowrap;
+  position: absolute; top: max(29%, calc(var(--guide-b, 0px) + 8 * var(--u))); left: 50%; transform: translateX(-50%); white-space: nowrap;
   padding: calc(4 * var(--u)) calc(14 * var(--u)); border-radius: calc(6 * var(--u));
   background: var(--hud-panel); border: 1.5px solid var(--dawn); color: var(--dawn-2);
   font-size: calc(15 * var(--u)); font-weight: 600; letter-spacing: 0.16em;
@@ -102,7 +95,7 @@
 
 /* ---------- оценка посадки ---------- */
 .hud-land {
-  position: absolute; left: 50%; top: 17%; transform: translateX(-50%); width: calc(310 * var(--u)); max-width: 90vw; box-sizing: border-box;
+  position: absolute; left: 50%; top: max(17%, calc(var(--guide-b, 0px) + 6 * var(--u))); transform: translateX(-50%); width: calc(310 * var(--u)); max-width: 90vw; box-sizing: border-box;
   padding: calc(8 * var(--u)) calc(14 * var(--u)) calc(10 * var(--u)); border-radius: calc(12 * var(--u));
   background: var(--hud-panel); border: 1px solid var(--glass-line); border-top: calc(3 * var(--u)) solid var(--ok);
   animation: hud-rise 0.3s ease-out;
@@ -118,23 +111,35 @@
 
 /* ---------- маркеры в мире ---------- */
 .hud-markers { position: absolute; inset: 0; overflow: hidden; }
+/* смысл — цветом и формой: оранжевый ромб — куда лететь, зелёная полоса — где садиться, красный прицел — что поразить,
+   огонёк — пожар, кольцо — пролететь сквозь. Подпись «что это» — над расстоянием, той же краской. */
 .hud-mk { --mk: var(--dawn); position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
-.hud-mk-target, .hud-mk-bandit { --mk: var(--signal); }
+.hud-mk-target, .hud-mk-bandit, .hud-mk-fire { --mk: var(--signal); }
 .hud-mk-friend { --mk: var(--sky); }
-.hud-mk-airport { --mk: var(--cream); }
-.hud-mk-ico { position: absolute; left: calc(-12 * var(--u)); top: calc(-12 * var(--u)); width: calc(24 * var(--u)); height: calc(24 * var(--u)); }
-.hud-mk-ico::before { content: ''; position: absolute; inset: calc(3 * var(--u)); box-sizing: border-box; border: 2px solid var(--mk); filter: drop-shadow(0 1px 2px var(--hud-shadow)); }
-.hud-mk-waypoint .hud-mk-ico::before { transform: rotate(45deg); }
-.hud-mk-target .hud-mk-ico::before { background: radial-gradient(circle, var(--mk) 0 2px, transparent 2.5px); }
+.hud-mk-airport { --mk: var(--ok); }
+.hud-mk-ico { position: absolute; left: calc(-14 * var(--u)); top: calc(-14 * var(--u)); width: calc(28 * var(--u)); height: calc(28 * var(--u)); }
+.hud-mk-ico::before, .hud-mk-ico::after { content: ''; position: absolute; inset: calc(3 * var(--u)); box-sizing: border-box; border: 2px solid var(--mk); filter: drop-shadow(0 1px 2px var(--hud-shadow)); }
+.hud-mk-ico::after { display: none; }
+.hud-mk-waypoint .hud-mk-ico::before { inset: calc(5 * var(--u)); border-width: 2.5px; transform: rotate(45deg); background: rgba(255, 154, 61, 0.22); }
+.hud-mk-waypoint:not(.is-off) .hud-mk-ico::after { display: block; inset: calc(5 * var(--u)); border-width: 1.5px; transform: rotate(45deg); animation: hud-mk-ping 1.8s ease-out infinite; }
+.hud-mk-target .hud-mk-ico::before { border-radius: 50%; background: radial-gradient(circle, var(--mk) 0 2px, transparent 2.5px); }
+.hud-mk-target:not(.is-off) .hud-mk-ico::after { display: block; inset: 0; border: 0; filter: none;
+  background: linear-gradient(var(--mk), var(--mk)) center top / 2px 22% no-repeat, linear-gradient(var(--mk), var(--mk)) center bottom / 2px 22% no-repeat,
+    linear-gradient(var(--mk), var(--mk)) left center / 22% 2px no-repeat, linear-gradient(var(--mk), var(--mk)) right center / 22% 2px no-repeat; }
+.hud-mk-fire .hud-mk-ico::before { inset: calc(4 * var(--u)); border: 2px solid var(--dawn-2); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: radial-gradient(circle at 50% 65%, var(--dawn-2) 0 22%, var(--dawn) 40%, var(--signal) 75%); }
 .hud-mk-friend .hud-mk-ico::before { border-radius: 50%; }
-.hud-mk-airport .hud-mk-ico::before { inset: calc(1 * var(--u)) calc(7 * var(--u)); border-radius: calc(2 * var(--u)); background: linear-gradient(var(--mk), var(--mk)) center / 1.5px 60% no-repeat; }
-.hud-mk-ring .hud-mk-ico::before { inset: 0; border-radius: 50%; border-width: 1.5px; }
-.hud-mk-bandit .hud-mk-ico::before { inset: calc(5 * var(--u)); border-width: 1.5px; }
-.hud-mk.is-off .hud-mk-ico::before { inset: calc(2 * var(--u)); border: 0; border-radius: 0; transform: none; background: var(--mk); clip-path: polygon(100% 50%, 28% 10%, 44% 50%, 28% 90%); }
-.hud-mk-txt { position: absolute; left: 0; top: calc(13 * var(--u)); transform: translateX(-50%); text-align: center; white-space: nowrap; line-height: 1.15; text-shadow: 0 1px 3px var(--hud-shadow), 0 0 2px var(--hud-shadow); }
-.hud-mk-txt b { display: block; font-family: var(--f-body); font-weight: 600; font-size: calc(10.5 * var(--u)); color: var(--cream); }
-.hud-mk-txt i { font-family: var(--f-mono); font-style: normal; font-weight: 600; font-size: calc(9.5 * var(--u)); color: var(--mk); }
+.hud-mk-airport .hud-mk-ico::before { inset: calc(1 * var(--u)) calc(8 * var(--u)); border-radius: calc(2 * var(--u)); background: rgba(111, 208, 140, 0.2) linear-gradient(var(--mk), var(--mk)) center / 1.5px 60% no-repeat; }
+.hud-mk-ring .hud-mk-ico::before { inset: 0; border-radius: 50%; border-width: 2px; }
+.hud-mk-bandit .hud-mk-ico::before { inset: calc(6 * var(--u)); border-width: 1.5px; }
+.hud-mk.is-off .hud-mk-ico::before { inset: calc(3 * var(--u)); border: 0; border-radius: 0; transform: none; background: var(--mk); clip-path: polygon(100% 50%, 28% 10%, 44% 50%, 28% 90%); }
+.hud-mk-txt { position: absolute; left: 0; top: calc(15 * var(--u)); transform: translateX(-50%); text-align: center; white-space: nowrap; line-height: 1.2; text-shadow: 0 1px 3px var(--hud-shadow), 0 0 2px var(--hud-shadow);
+  font-family: var(--f-body); font-size: calc(10.5 * var(--u)); }
+.hud-mk-tag { font-family: var(--f-display); font-weight: 600; font-size: calc(10.5 * var(--u)); letter-spacing: 0.1em; color: var(--mk); }
+.hud-mk-txt b { font-weight: 600; color: var(--cream); }
+.hud-mk-txt i { display: block; font-family: var(--f-mono); font-style: normal; font-weight: 600; font-size: calc(9.5 * var(--u)); color: var(--cream); }
+.hud-mk-tag:not(:empty) + b:not(:empty)::before { content: ' · '; color: var(--mk); }
 .hud-mk-bandit .hud-mk-txt { top: calc(9 * var(--u)); }
+.hud-mk.is-off .hud-mk-txt { top: calc(13 * var(--u)); }
 
 /* ---------- прицельные марки ---------- */
 .hud-aim { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
@@ -175,6 +180,7 @@
 .hud-photo-tip { position: absolute; left: 50%; bottom: calc(var(--sa-b) + 12 * var(--u)); transform: translateX(-50%); padding: calc(3 * var(--u)) calc(12 * var(--u)); border-radius: calc(12 * var(--u)); background: var(--hud-panel); font-family: var(--f-body); font-size: calc(11.5 * var(--u)); color: var(--haze); white-space: nowrap; }
 
 @keyframes hud-blink { 50% { opacity: 0.35; } }
+@keyframes hud-mk-ping { from { opacity: 0.9; transform: rotate(45deg) scale(1); } to { opacity: 0; transform: rotate(45deg) scale(2.1); } }
 @keyframes hud-rise { from { opacity: 0; translate: 0 calc(6 * var(--u)); } }
 @keyframes hud-flash { 0%, 30% { border-color: var(--dawn-2); box-shadow: 0 0 0 calc(3 * var(--u)) rgba(255, 154, 61, 0.4); } }
 
@@ -183,6 +189,7 @@
   .hud-dash { bottom: calc(var(--sa-b) + 32%); }
   .hud-toasts { bottom: auto; top: 37%; }
   .hud-top { top: calc(var(--sa-t) + 110 * var(--u)); }
+  .hud-radio { top: auto; bottom: calc(var(--sa-b) + 32% + 64 * var(--u)); inset-inline-end: var(--sa-r); max-width: 60vw; }
   .hud-warn { top: 31%; }
   .hud-land { top: 22%; }
 }

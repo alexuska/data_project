@@ -1,6 +1,8 @@
 // СЕНСОРНОЕ УПРАВЛЕНИЕ: плавающая ручка (левый большой палец), РУД и кнопки (правый), верхние мелкие кнопки,
 // осмотр перетаскиванием по свободной части экрана и щипок. Всё на pointer events с захватом указателя:
 // каждый элемент помнит свой pointerId, поэтому ручка + РУД + кнопка работают одновременно и не «залипают».
+// highlight(name | null) — пульсирующая обводка элемента, который сейчас нужно тронуть (карточка задачи HUD):
+// 'thr-up' | 'thr-down' | 'thr' | 'stick' | 'stick-back' | 'gear' | 'flaps' | 'brake' | 'action' | 'fire'.
 import { clamp } from '../core/util.js';
 import { saveProfile } from '../core/save.js';
 import { afterburnerFrom } from '../systems/input.js';
@@ -60,6 +62,7 @@ export function createTouch(G, input) {
       <button type="button" class="touch-mini touch-m-cam" aria-label="Камера">${ICON.camera}</button>
       <button type="button" class="touch-mini touch-m-pause" aria-label="Пауза">${ICON.pause}</button>
     </div>
+    <div class="touch-guide" hidden></div>
     <div class="touch-hint touch-hint-stick" hidden><b>РУЧКА</b>веди пальцем: на себя — нос вверх</div>
     <div class="touch-hint touch-hint-thr" hidden><b>РУД</b>вверх — больше тяги</div>
     <div class="touch-hint touch-hint-look" hidden>Проведи по небу — осмотреться, двумя пальцами — приблизить</div>`;
@@ -71,8 +74,15 @@ export function createTouch(G, input) {
     action: $('.touch-b-action'), wsel: $('.touch-b-wsel'), launch: $('.touch-b-launch'), gear: $('.touch-b-gear'),
     fire: $('.touch-b-fire'), flaps: $('.touch-b-flaps'), brake: $('.touch-b-brake'),
     time: $('.touch-m-time'), map: $('.touch-m-map'), cam: $('.touch-m-cam'), pause: $('.touch-m-pause'),
-    hStick: $('.touch-hint-stick'), hThr: $('.touch-hint-thr'), hLook: $('.touch-hint-look'),
+    hStick: $('.touch-hint-stick'), hThr: $('.touch-hint-thr'), hLook: $('.touch-hint-look'), guide: $('.touch-guide'),
   };
+  // подсветка «что трогать сейчас»: элемент + короткая подпись-стрелка
+  const GUIDE = {
+    'thr-up': ['thr', 'РУД — ВВЕРХ ДО УПОРА'], 'thr-down': ['thr', 'РУД — ВНИЗ'], thr: ['thr', 'РУД — РЫЧАГ ГАЗА'],
+    stick: ['stick', 'РУЧКА — ВЕДИ ПАЛЬЦЕМ'], 'stick-back': ['stick', 'ПАЛЕЦ ВНИЗ — НОС ВВЕРХ'],
+    gear: ['gear', 'НАЖМИ: ШАССИ'], flaps: ['flaps', 'НАЖМИ: ЗАКРЫЛКИ'], brake: ['brake', 'ДЕРЖИ: ТОРМОЗ'], action: ['action', ''], fire: ['fire', 'ДЕРЖИ: ОГОНЬ'],
+  };
+  let guideName = null, guideEl = null;
   const timeTxt = el.time.firstElementChild;
   const actionLbl = el.action.querySelector('.touch-lbl');
   const brakeLbl = el.brake.querySelector('.touch-lbl');
@@ -319,7 +329,25 @@ export function createTouch(G, input) {
   // ---------- покадровое обновление (только изменившееся) ----------
   const last = { thr: -1, real: -1, gear: -1, flaps: -1, brake: -1, air: -1, time: -1, ab: -1, plane: null,
     gun: -2, slot: '', slotN: -2, nslots: -1, gearHint: -1, hasGear: -1, hasFlaps: -1 };
-  let visible = false, shownT = 0;
+  let visible = false, shownT = 0, thrHintT = 0, needGuidePos = true;
+  // подпись подсветки — рядом с элементом (над ним; у РУД — слева)
+  function placeGuide() {
+    needGuidePos = false;
+    const r = root.getBoundingClientRect();
+    const at = el.guide.dataset.at;
+    let x, y, side = 'top';
+    if (at === 'stick') { x = bx; y = by - 66 * S; }
+    else {
+      const t = (at === 'thr' ? el.track : guideEl).getBoundingClientRect();
+      if (at === 'thr') {
+        const lefty = root.classList.contains('touch-lefty');
+        x = lefty ? t.right - r.left + 8 * S : t.left - r.left - 8 * S; y = t.top - r.top + t.height * 0.35; side = lefty ? 'right' : 'left';
+      }
+      else { x = t.left - r.left + t.width / 2; y = t.top - r.top - 6 * S; }
+    }
+    el.guide.dataset.side = side;
+    el.guide.style.transform = `translate3d(${Math.round(x)}px,${Math.round(y)}px,0)`;
+  }
 
   function setHidden(node, h) { if (node.hidden !== h) node.hidden = h; }
 
@@ -336,6 +364,19 @@ export function createTouch(G, input) {
       setHidden(el.action, !a);
       if (a) actionLbl.textContent = a.label;
     },
+    // подсветить элемент управления, который нужно тронуть (null — снять)
+    highlight(name) {
+      const g = name && GUIDE[name] ? name : null;
+      if (g === guideName) return;
+      guideName = g;
+      if (guideEl) guideEl.classList.remove('is-guide');
+      guideEl = g ? el[GUIDE[g][0]] : null;
+      if (guideEl) guideEl.classList.add('is-guide');
+      const txt = g ? GUIDE[g][1] : '';
+      el.guide.dataset.label = txt;
+      el.guide.dataset.at = g ? GUIDE[g][0] : '';
+      needLayout = true;
+    },
     update(dt) {
       const p = G.player;
       const show = G.mode === 'flight' && !G.paused && !!p && p.alive && !(G.hud && G.hud.photoMode);
@@ -346,7 +387,7 @@ export function createTouch(G, input) {
         else { needLayout = true; shownT = 0; }
       }
       if (!show) return;
-      if (needLayout) layout();
+      if (needLayout) { layout(); needGuidePos = true; }
       shownT += dt;
 
       // РУД
@@ -430,11 +471,21 @@ export function createTouch(G, input) {
         el.time.classList.toggle('is-on', ts > 1);
       }
 
-      // подсказки первого полёта
+      // подписи-стрелки подсветки (подсвеченный элемент может быть скрыт — тогда без подписи)
+      const gOn = !!guideName && !!el.guide.dataset.label && !!guideEl && !guideEl.hidden && !(el.guide.dataset.at === 'stick' && sPid !== null);
+      setHidden(el.guide, !gOn);
+      if (gOn && needGuidePos) placeGuide();
+
+      // подсказки первого полёта: только в свободном полёте (в задании всё объясняет карточка задачи),
+      // ручка — пока не тронул или 15 с, РУД — следом, тоже ненадолго
       const sn = seen();
-      setHidden(el.hStick, !!sn.ctlStick);
-      setHidden(el.hThr, !!sn.ctlThr || !sn.ctlStick);
-      const lookHint = !sn.ctlLook && !!sn.ctlStick && !!sn.ctlThr && !p.onGround && shownT > 6;
+      const er = G.missions && G.missions.errands;
+      const quiet = !!(G.missions && G.missions.active) || gOn || !!(er && (er.active || er.offer));
+      setHidden(el.hStick, !!sn.ctlStick || quiet);
+      if (!sn.ctlStick && !quiet && shownT > 15) markSeen('ctlStick', el.hStick);
+      if (!sn.ctlThr && sn.ctlStick && !quiet) { thrHintT += dt; if (thrHintT > 15) markSeen('ctlThr', el.hThr); }
+      setHidden(el.hThr, !!sn.ctlThr || !sn.ctlStick || quiet);
+      const lookHint = !sn.ctlLook && !!sn.ctlStick && !!sn.ctlThr && !p.onGround && shownT > 6 && !quiet;
       setHidden(el.hLook, !lookHint);
       if (lookHint && shownT > 26) markSeen('ctlLook', el.hLook);
     },

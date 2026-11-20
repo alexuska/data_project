@@ -1,7 +1,7 @@
 // Аэродромы: полосы с разметкой, рулёжки, перроны, постройки, огни (кромка, подход, пороги, PAPI), ветроуказатели.
 // Авианосец «Буревестник». Всё слито в 2–3 меша на аэродром (покрытие, разметка, постройки).
 import * as THREE from 'three';
-import { headingVec, DEG, clamp } from '../core/util.js';
+import { headingVec, DEG, clamp, smoothstep } from '../core/util.js';
 import { AIRPORTS, CARRIER, runwayPoint } from './layout.js';
 import { Builder, drawNumber } from './geo.js';
 import { lin } from './env.js';
@@ -82,10 +82,15 @@ export function createAirports(G, world, mats, lights) {
   function pavedRunway(D, M, a, rw, elev) {
     const L = rw.length, W = rw.width;
     D.setFrame(rw.cx, elev + 0.06, rw.cz, rw.heading);
-    for (let u = -L / 2; u < L / 2 - 1; u += 100) {
-      const len = Math.min(100, L / 2 - u);
-      const td = Math.min(Math.abs(u + L / 2 - 350), Math.abs(L / 2 - u - 450)) < 260 ? 0.86 : 1;
-      D.rect(0, -(u + len / 2), W, len, 0, shade(C.asph, (0.95 + rnd() * 0.1) * td));
+    // полоса тремя продольными лентами: в зонах приземления по оси — тёмный налёт резины, по краям светлее
+    const rubber = (d) => smoothstep(110, 300, d) * (1 - smoothstep(650, 1050, d));
+    const cw = W * 0.46;
+    for (let u = -L / 2; u < L / 2 - 1; u += 50) {
+      const len = Math.min(50, L / 2 - u), um = u + len / 2;
+      const rb = Math.max(rubber(um + L / 2), rubber(L / 2 - um)) * (0.7 + rnd() * 0.3);
+      const k = 0.95 + rnd() * 0.1;
+      D.rect(0, -um, cw, len, 0, shade(C.asph, k * (0.97 - 0.42 * rb)));
+      for (const sv of [-1, 1]) D.rect(sv * (cw / 2 + (W - cw) / 4), -um, (W - cw) / 2, len, 0, shade(C.asph, k * (1.04 - 0.08 * rb)));
     }
     for (const sv of [-1, 1]) D.rect(sv * (W / 2 + 4), 0, 8, L, 0, C.shoulder);
     for (const e of [-1, 1]) D.rect(0, e * (L / 2 + 30), W + 16, 60, 0, C.asphDark);

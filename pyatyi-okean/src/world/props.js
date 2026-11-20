@@ -12,7 +12,7 @@ const C = {
   wall: [lin('#ece7dc'), lin('#e2d6c4'), lin('#d9dde2'), lin('#efe2cf'), lin('#c9cfd6'), lin('#e6c9b0')],
   tower: [lin('#9fb4c8'), lin('#c8d2dc'), lin('#8496a8'), lin('#d8d2c4'), lin('#6f8296'), lin('#b0bcc4')],
   roof: [lin('#b5553c'), lin('#a8483a'), lin('#c26a44'), lin('#8a4a3a'), lin('#5f7286'), lin('#77634f')],
-  roofFlat: lin('#8d9096'), block: lin('#3c3f45'), yard: lin('#9a9a92'), park: lin('#6fa052'), road: lin('#3a3d43'),
+  roofFlat: lin('#8d9096'), roofsFlat: [lin('#8d9096'), lin('#a6a7a9'), lin('#73777d'), lin('#9a8e80'), lin('#b2aca2')], block: lin('#4b4e53'), yard: lin('#9a9a92'), garden: lin('#7b9a58'), park: lin('#6fa052'), road: lin('#45484d'),
   concrete: lin('#a9aaa5'), concreteDark: lin('#86888a'), red: lin('#c8452e'), white: lin('#f2f2ee'), dark: lin('#25282d'), steel: lin('#8a949e'),
   orange: lin('#ef7a2b'), yellow: lin('#f0c23a'), blue: lin('#2f5f9a'), green: lin('#3f7d55'), wood: lin('#8a6a4a'), thatch: lin('#c9a66a'),
   hull: [lin('#2c3e58'), lin('#7a2a24'), lin('#2f3338'), lin('#3d6a5a')], glass: lin('#3f5f7c'), ice: lin('#e8f2f8'), iceBlue: lin('#b8dcec'),
@@ -36,7 +36,8 @@ export function createProps(G, world, hf, mats, lights) {
   };
 
   // ======================= ЛЕСА =======================
-  const treeMat = patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), { tree: true });
+  // гладкие «округлые» нормали крон (вместо граней) — деревья читаются объёмными, а не пирамидками
+  const treeMat = patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true }), { tree: true });
   let treeMeshes = [];
   const TC = {
     con: [lin('#2c5a3c'), lin('#3f7a4a')], conN: [lin('#3a6650'), lin('#dfe9ee')], br: [lin('#3d7038'), lin('#6aa64c')], brA: [lin('#5a7a34'), lin('#9ab04a')],
@@ -45,13 +46,13 @@ export function createProps(G, world, hf, mats, lights) {
   function buildTrees() {
     for (const m of treeMeshes) { group.remove(m); m.geometry.dispose(); }
     treeMeshes = [];
-    const dens = { low: 0.3, medium: 0.62, high: 1.25 }[G.quality.level] || 0.72;
+    const dens = { low: 0.3, medium: 0.75, high: 1.3 }[G.quality.level] || 0.75;
     const r = mulberry32(555);
     const NB = 8, per = GRID_N / NB;
     const buckets = [];
-    for (let i = 0; i < NB * NB; i++) buckets.push({ p: [], c: [], b: [], ix: [], ymin: 1e9, ymax: -1e9 });
+    for (let i = 0; i < NB * NB; i++) buckets.push({ p: [], c: [], b: [], n: [], ix: [], ymin: 1e9, ymax: -1e9 });
     const data = hf.data, V = hf.V;
-    const vert = (bk, x, y, z, col, by) => { bk.p.push(x, y, z); bk.c.push(col[0], col[1], col[2]); bk.b.push(by); return bk.p.length / 3 - 1; };
+    const vert = (bk, x, y, z, col, by, nx = 0, ny = 1, nz = 0) => { bk.p.push(x, y, z); bk.c.push(col[0], col[1], col[2]); bk.b.push(by); const l = 127 / Math.hypot(nx, ny, nz); bk.n.push(Math.round(nx * l), Math.round(ny * l), Math.round(nz * l)); return bk.p.length / 3 - 1; };
     for (let j = 0; j < GRID_N; j++) {
       for (let i = 0; i < GRID_N; i++) {
         const k = j * V + i;
@@ -79,11 +80,11 @@ export function createProps(G, world, hf, mats, lights) {
             const h = 19 * kk, lx = (r() - 0.5) * 6, lz = (r() - 0.5) * 6;
             const t0 = vert(bk, x, y + h, z, TC.trunk, y);
             const b = [];
-            for (let q = 0; q < 3; q++) b.push(vert(bk, x - lx + Math.cos(q * 2.1) * 1.1, y - 0.5, z - lz + Math.sin(q * 2.1) * 1.1, shade(TC.trunk, 0.8), y));
+            for (let q = 0; q < 3; q++) b.push(vert(bk, x - lx + Math.cos(q * 2.1) * 1.1, y - 0.5, z - lz + Math.sin(q * 2.1) * 1.1, shade(TC.trunk, 0.8), y, Math.cos(q * 2.1), 0.2, Math.sin(q * 2.1)));
             bk.ix.push(b[1], b[0], t0, b[2], b[1], t0, b[0], b[2], t0);
             const top = vert(bk, x, y + h + 2.5, z, shade(TC.palm[1], sh), y);
             const tips = [];
-            for (let q = 0; q < 6; q++) tips.push(vert(bk, x + Math.cos(ph + q * 1.047) * 9 * kk, y + h - 2.5 - (q % 2) * 2, z + Math.sin(ph + q * 1.047) * 9 * kk, shade(TC.palm[0], sh), y));
+            for (let q = 0; q < 6; q++) tips.push(vert(bk, x + Math.cos(ph + q * 1.047) * 9 * kk, y + h - 2.5 - (q % 2) * 2, z + Math.sin(ph + q * 1.047) * 9 * kk, shade(TC.palm[0], sh), y, Math.cos(ph + q * 1.047), 0.8, Math.sin(ph + q * 1.047)));
             for (let q = 0; q < 6; q++) bk.ix.push(tips[(q + 1) % 6], tips[q], top);
             bk.ymax = Math.max(bk.ymax, y + h + 3);
           } else if (arc > 0.3 || y > 330 + r() * 150 || (tro < 0.5 && fbm2(x / 600, z / 600, 2, 9) > 0.55)) {
@@ -92,7 +93,7 @@ export function createProps(G, world, hf, mats, lights) {
             const cc = arc > 0.5 ? TC.conN : TC.con;
             const ap = vert(bk, x, y + h, z, shade(cc[1], sh), y);
             const ring = [];
-            for (let q = 0; q < 5; q++) ring.push(vert(bk, x + Math.cos(ph + q * 1.2566) * rad, y + 1.5, z + Math.sin(ph + q * 1.2566) * rad, shade(cc[0], sh), y));
+            for (let q = 0; q < 5; q++) ring.push(vert(bk, x + Math.cos(ph + q * 1.2566) * rad, y + 1.5, z + Math.sin(ph + q * 1.2566) * rad, shade(cc[0], sh * 0.85), y, Math.cos(ph + q * 1.2566), 0.75, Math.sin(ph + q * 1.2566)));
             for (let q = 0; q < 5; q++) bk.ix.push(ring[(q + 1) % 5], ring[q], ap);
             bk.ymax = Math.max(bk.ymax, y + h);
           } else {
@@ -100,9 +101,9 @@ export function createProps(G, world, hf, mats, lights) {
             const h = 21 * kk, rad = 11.5 * kk;
             const cc = tro > 0.5 ? TC.trop : r() < 0.12 ? TC.brA : TC.br;
             const top = vert(bk, x + (r() - 0.5) * 3, y + h, z + (r() - 0.5) * 3, shade(cc[1], sh), y);
-            const bot = vert(bk, x, y - 1, z, shade(cc[0], sh * 0.7), y);
+            const bot = vert(bk, x, y - 1, z, shade(cc[0], sh * 0.62), y, 0, -1, 0);
             const ring = [];
-            for (let q = 0; q < 5; q++) ring.push(vert(bk, x + Math.cos(ph + q * 1.2566) * rad, y + h * (0.3 + 0.12 * (q % 2)), z + Math.sin(ph + q * 1.2566) * rad, shade(cc[0], sh * 1.08), y));
+            for (let q = 0; q < 5; q++) ring.push(vert(bk, x + Math.cos(ph + q * 1.2566) * rad, y + h * (0.3 + 0.12 * (q % 2)), z + Math.sin(ph + q * 1.2566) * rad, shade(cc[0], sh * 1.08), y, Math.cos(ph + q * 1.2566), 0.3, Math.sin(ph + q * 1.2566)));
             for (let q = 0; q < 5; q++) { bk.ix.push(ring[(q + 1) % 5], ring[q], top); bk.ix.push(ring[q], ring[(q + 1) % 5], bot); }
             bk.ymax = Math.max(bk.ymax, y + h);
           }
@@ -118,6 +119,7 @@ export function createProps(G, world, hf, mats, lights) {
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bk.p), 3));
       g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(bk.c), 3));
       g.setAttribute('aBaseY', new THREE.BufferAttribute(new Float32Array(bk.b), 1));
+      g.setAttribute('normal', new THREE.BufferAttribute(new Int8Array(bk.n), 3, true));
       g.setIndex(new THREE.BufferAttribute(new Uint32Array(bk.ix), 1));
       const cs = (HALF * 2) / NB;
       const cx = -HALF + ((bi % NB) + 0.5) * cs, cz = -HALF + (Math.floor(bi / NB) + 0.5) * cs;
@@ -162,7 +164,7 @@ export function createProps(G, world, hf, mats, lights) {
         const fr = D.cs; D.cs = 1; const fs = D.sn; D.sn = 0;
         D.quad(cor(-1, 1, q), cor(1, 1, q), cor(1, -1, q), cor(-1, -1, q), C.block);
         const parkB = r() < 0.07;
-        const yc = parkB ? C.park : shade(C.yard, 0.9 + r() * 0.2);
+        const yc = parkB ? C.park : core < 0.3 && r() < 0.75 ? shade(C.garden, 0.85 + r() * 0.3) : shade(C.yard, 0.9 + r() * 0.2);
         const c2 = (sx, sz) => { const v = cor(sx, sz, qi); v[1] += 0.25; return v; };
         D.quad(c2(-1, 1), c2(1, 1), c2(1, -1), c2(-1, -1), yc);
         D.cs = fr; D.sn = fs;
@@ -178,7 +180,7 @@ export function createProps(G, world, hf, mats, lights) {
             const hgt = (38 + 95 * Math.pow(r(), 1.6) * core) * (0.8 + core * 0.5);
             const col = pick(C.tower, r());
             const bx = nb === 1 ? 0 : (b - 0.5) * lot * 0.5, bz = (r() - 0.5) * lot * 0.2;
-            B.box(bx, 0, bz, w, top + hgt, d, col, { win: true, top: C.roofFlat });
+            B.box(bx, 0, bz, w, top + hgt, d, col, { win: true, top: pick(C.roofsFlat, r()) });
             if (r() < 0.6) B.box(bx, top + hgt, bz, w * 0.4, 5, d * 0.4, shade(col, 0.8));
             if (hgt > 85) { const p = { x: px + cs * bx - sn * bz, z: pz + sn * bx + cs * bz }; lights.add(p.x, base + top + hgt + 6, p.z, LC.RED, 3, 3, r(), 0.3); }
           }
@@ -188,7 +190,7 @@ export function createProps(G, world, hf, mats, lights) {
             if (r() < 0.2) continue;
             const w = lot * 0.4 * (0.7 + r() * 0.35), d = lot * 0.4 * (0.7 + r() * 0.35), hgt = 12 + r() * 22 * (0.5 + core);
             const col = pick(C.wall, r());
-            B.box(((b % 2) - 0.5) * lot * 0.5, 0, (Math.floor(b / 2) - 0.5) * lot * 0.5, w, top + hgt, d, col, { win: true, top: r() < 0.3 ? pick(C.roof, r()) : C.roofFlat });
+            B.box(((b % 2) - 0.5) * lot * 0.5, 0, (Math.floor(b / 2) - 0.5) * lot * 0.5, w, top + hgt, d, col, { win: true, top: r() < 0.3 ? pick(C.roof, r()) : pick(C.roofsFlat, r()) });
           }
         } else {
           // частные дома с двускатными крышами
@@ -558,7 +560,7 @@ export function createProps(G, world, hf, mats, lights) {
     }
     sg.computeVertexNormals();
   }
-  const smokeMat = patchMaterial(new THREE.MeshLambertMaterial({ color: '#8d8a88', flatShading: true }));
+  const smokeMat = patchMaterial(new THREE.MeshLambertMaterial({ color: '#8d8a88' }));
   const smoke = new THREE.InstancedMesh(sg, smokeMat, NS);
   smoke.frustumCulled = false;
   smoke.name = 'volcano-smoke';

@@ -1,5 +1,8 @@
-// HUD: приборы полёта, цель задания, радио, сообщения, предупреждения, маркеры, помощь на посадке, оценка посадки.
+// HUD: приборы полёта, карточка задачи, радио, сообщения, предупреждения, маркеры, помощь на посадке, оценка посадки.
 // Контракт — в ARCHITECTURE.md: show(), hide(), setObjective(), setMarkers(), toast(), radio(), setAction(), update(dtReal).
+// Карточка задачи (ui/hud-guide.js) берёт шаг у G.missions.active.card() или у поручений свободного полёта
+// (G.missions.errands.card()); без них — показывает текст setObjective. Нужный элемент управления подсвечивается
+// через G.input.touch.highlight(name). hud.guide — сама карточка (tip(text) — одноразовая подсказка).
 // Сверх контракта: setPhotoMode(bool) / событие 'input:photo' (переключить) → событие 'photo:changed' {on};
 // showLandingCard(data); событие 'landing:rated' {score, title, vs, across, zone, onRunway}; hud.map (полная карта).
 import { clamp, wrapPi, DEG } from '../core/util.js';
@@ -7,7 +10,19 @@ import { uiScale } from './touch.js';
 import { createGauges, readTokens } from './hud-gauges.js';
 import { createRadar } from './hud-radar.js';
 import { createMarkers } from './hud-markers.js';
+import { createGuide } from './hud-guide.js';
 import { createMap } from './map.js';
+import { saveProfile } from '../core/save.js';
+
+// одноразовые подсказки при первом появлении маркера нового вида
+const MARK_TIP = {
+  waypoint: 'Оранжевый ромб «ЛЕТИ СЮДА» — точка, куда лететь. Не видно его — у края экрана стрелка: наклони ручку в её сторону.',
+  airport: 'Зелёная метка «ПОСАДКА» — полоса, куда садиться.',
+  target: 'Красный прицел «ЦЕЛЬ» — то, что нужно поразить.',
+  fire: 'Метка «ПОЖАР» — очаг огня: сбрось на него воду.',
+  ring: 'Кольцо «ПРОЛЕТИ ЗДЕСЬ» — пролети точно сквозь него.',
+  bandit: 'Красная рамка — самолёт условного противника.',
+};
 
 const WARN = ['', 'ЗЕМЛЯ! ТЯНИ ВВЕРХ', 'СВАЛИВАНИЕ', 'ШАССИ!', 'ПРЕВЫШЕНИЕ СКОРОСТИ', 'МАЛО ТОПЛИВА', 'САМОЛЁТ ПОВРЕЖДЁН'];
 const ILS_HINT = ['на глиссаде', 'ниже глиссады — выше!', 'выше глиссады — снижайся', 'мала скорость — добавь тягу', 'велика скорость — убери тягу', 'левее оси — доверни вправо', 'правее оси — доверни влево', 'выравнивай и сажай'];
@@ -22,9 +37,8 @@ export function createHud(G) {
     <div class="hud-colli" hidden><div class="hud-colli-clip"><div class="hud-colli-ladder"></div></div><div class="hud-colli-cross"></div></div>
     <div class="hud-top">
       <canvas class="hud-hdg"></canvas>
-      <div class="hud-obj" hidden><b></b><span></span></div>
-      <div class="hud-radio" hidden><b></b><span></span></div>
     </div>
+    <div class="hud-radio" hidden><b></b><span></span></div>
     <div class="hud-corner"><canvas class="hud-radar"></canvas><div class="hud-ts" hidden></div></div>
     <div class="hud-warn" hidden></div>
     <div class="hud-toasts"></div>
@@ -48,7 +62,6 @@ export function createHud(G) {
 
   const $ = (s) => root.querySelector(s);
   const el = {
-    obj: $('.hud-obj'), objN: $('.hud-obj b'), objT: $('.hud-obj span'),
     radio: $('.hud-radio'), radioFrom: $('.hud-radio b'), radioText: $('.hud-radio span'),
     warn: $('.hud-warn'), toasts: $('.hud-toasts'), ts: $('.hud-ts'),
     land: $('.hud-land'), landT: $('.hud-land-t'), landRows: $('.hud-land-rows'),
@@ -57,11 +70,20 @@ export function createHud(G) {
   };
   const gauges = createGauges(G, $('.hud-dash-c'), $('.hud-hdg'));
   const radar = createRadar(G, $('.hud-radar'), K);
-  const markers = createMarkers(G, $('.hud-markers'), $('.hud-colli'));
+  const guide = createGuide(G, root);
+  const markers = createMarkers(G, $('.hud-markers'), $('.hud-colli'), (kind) => {
+    const seen = G.profile.seen || (G.profile.seen = {});
+    const k = 'mk_' + kind;
+    if (seen[k] || !MARK_TIP[kind]) return;
+    seen[k] = 1;
+    saveProfile(G.profile);
+    guide.tip(MARK_TIP[kind]);
+  });
   const map = createMap(G);
 
   let shown = false, needResize = true, S = 1, photoOwn = false;
-  let objText = null, objCount = '';
+  let objText = null, objN = 0, objTotal = 0;
+  let guideAcc = 1, guideKey = '', guideCtl = undefined, guideB = -1;
   const toasts = [];
   const radioQ = [];
   let radioT = 0, landT = 0, slowAcc = 1, stripAcc = 1, warnCode = 0, aptBearing = NaN, aptAcc = 9;
@@ -229,19 +251,11 @@ export function createHud(G) {
     photoMode: false,
     show() { shown = true; needResize = true; },
     hide() { shown = false; root.hidden = true; markers.hideAll(); },
+    guide,
+    // цель без карточки задания (запасной путь контракта): показывается заголовком карточки
     setObjective(text) {
-      const t = text || null;
-      if (t === objText) return;
-      objText = t;
-      el.obj.hidden = !t;
-      if (t) {
-        el.objT.textContent = t;
-        el.objN.textContent = objCount;
-        el.objN.hidden = !objCount;
-        el.obj.classList.remove('is-new');
-        void el.obj.offsetWidth;
-        el.obj.classList.add('is-new');
-      }
+      objText = text || null;
+      guideAcc = 1;
     },
     setMarkers(list) { hud.markers = list || []; },
     setAction(a) { if (G.input && G.input.setAction) G.input.setAction(a); },
@@ -291,9 +305,32 @@ export function createHud(G) {
       const ac = G.player;
       const vis = shown && G.mode === 'flight' && !!ac && !hud.photoMode;
       if (root.hidden === vis) { root.hidden = !vis; if (!vis) markers.hideAll(); else needResize = true; }
-      if (!vis) return;
-      if (needResize) resize();
+      if (!vis) { if (guideCtl !== null) { guideCtl = null; G.input?.touch?.highlight?.(null); } return; }
+      if (needResize) { resize(); guideB = -1; }
       const dtc = Math.min(dt, 0.25);
+      // после аварии приборы не должны показывать скорость полёта
+      if (!ac.alive && (ac.ias || ac.vs)) { ac.ias = 0; ac.tas = 0; ac.vs = 0; ac.g = 0; }
+
+      // карточка задачи: задание → поручение вышки → просто цель
+      guideAcc += dt;
+      if (guideAcc >= 0.15) {
+        const gdt = guideAcc;
+        guideAcc = 0;
+        const ms = G.missions;
+        let card = (ms && ms.active && ms.active.card && ms.active.card()) || (ms && ms.errands && ms.errands.card && ms.errands.card()) || null;
+        if (!card && objText) card = { key: 'obj:' + objText, n: objN, total: objTotal, title: objText };
+        const moved = guide.update(card, gdt);
+        const ctl = card && ac.alive ? card.ctl || null : null;
+        if (ctl !== guideCtl) { guideCtl = ctl; G.input?.touch?.highlight?.(ctl); }
+        if (moved || guideB < 0) {
+          const b = Math.round(guide.bottom());
+          if (b !== guideB) {
+            guideB = b;
+            markers.setTop(b);
+            document.documentElement.style.setProperty('--guide-b', (b || 56) + 'px');
+          }
+        }
+      }
 
       // медленные вычисления: выбор полосы, предупреждения, ближайший аэродром
       slowAcc += dt;
@@ -389,8 +426,8 @@ export function createHud(G) {
   G.bus.on('radio', (p) => { if (p) hud.radio(p.from, p.text); });
   G.bus.on('mission:objective', (p) => {
     if (!p) return;
-    objCount = p.total > 1 ? `${(p.index || 0) + 1}/${p.total}` : '';
-    if (p.text === objText) { el.objN.textContent = objCount; el.objN.hidden = !objCount; } else hud.setObjective(p.text);
+    objN = (p.index || 0) + 1; objTotal = p.total || 0;
+    hud.setObjective(p.text);
   });
   G.bus.on('ac:takeoff', (e) => { if (e && e.ac === G.player) airSince = G.time.sim; });
   G.bus.on('ac:touchdown', (e) => {
@@ -401,7 +438,8 @@ export function createHud(G) {
     rateLanding(e);
   });
   G.bus.on('flight:start', () => {
-    objCount = ''; hud.setObjective(null); hud.setMarkers([]);
+    objN = objTotal = 0; hud.setObjective(null); hud.setMarkers([]);
+    guide.reset(); guideCtl = undefined; guideB = -1;
     hud.photoMode = false; photoRoot.hidden = true;
     for (const t of toasts) t.node.remove();
     toasts.length = 0; radioQ.length = 0; radioT = 0; landT = 0;

@@ -180,6 +180,20 @@ for (const id of PLANES) {
     const ok = r.got.includes('lowpass');
     console.log(`${ok ? ' ok ' : ' -- '} lowpass     → ${r.got.map((g) => TRICKS[g].name).join(', ') || '—'}`);
   }
+  // боевой разворот «как в подсказке»: коротко ручку вбок (крен ~45°), потом ручку на себя и держать, пока курс не развернётся
+  const reversed = (ac, st) => st.dt > 1 && Math.abs(((ac.heading - Math.PI + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < 0.3;
+  // крен держим в коридоре lo…hi (подсказка «крен велик / мал»), ручка на себя — pitch; нос выше 45° — ослабить (подсказка)
+  for (const [label, kick, pitch, lo, hi] of [['крен 30–50°, на себя 1', 0.25, 1, 0.5, 0.87], ['крен 25–45°, на себя 0.8', 0.2, 0.8, 0.44, 0.78], ['крен 40–60°, на себя 1', 0.35, 1, 0.7, 1.05]]) {
+    const r = fly(id, [
+      speedTo(2.2),
+      { name: 'вбок', max: kick, ctl: { roll: 1, throttle: 1 } },
+      { name: 'на себя', max: 30, track: true, ctl: (ac) => ({ pitch: ac.pitch > 0.8 ? 0.2 : pitch, roll: ac.bank > hi ? -0.5 : ac.bank < lo ? 0.5 : 0, throttle: 1 }), until: reversed },
+      { name: 'отпустил', max: 4, ctl: { throttle: 1 } },
+    ]);
+    const ok = r.got.includes('chandelle');
+    if (!ok && id === 'yak52' && assist) fails.push(`${id}: боевой разворот (${label}) (засчитано: ${r.got.join(', ') || 'ничего'})`);
+    console.log(`${ok ? ' ok ' : ' -- '} разворот: ${label} → ${r.got.map((g) => TRICKS[g].name).join(', ') || '—'} h=${r.minAlt.toFixed(0)}…${r.maxAlt.toFixed(0)}м${verbose ? ' ' + r.log.join(' · ') : ''}`);
+  }
   // ложные срабатывания: спокойный полёт и пологие развороты — ничего не засчитывается
   {
     const r = fly(id, [

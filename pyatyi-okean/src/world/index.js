@@ -14,7 +14,7 @@ import { createLights } from './lights.js';
 import { createAirports } from './airports.js';
 import { createProps } from './props.js';
 import { makeWindowTextures } from './geo.js';
-import { U, patchMaterial } from './env.js';
+import { U, patchMaterial, setWorldQuality } from './env.js';
 
 export const runwayLocal = rwLocal;
 const DAY_RATE = 24 / (40 * 60); // игровых часов в секунду: сутки ≈ 40 минут
@@ -24,6 +24,7 @@ export function createWorld(G) {
   group.name = 'world';
   G.scene.add(group);
 
+  setWorldQuality(G.quality.level);
   const T0 = performance.now();
   const hf = buildHeightfield();
   const T1 = performance.now();
@@ -130,7 +131,7 @@ export function createWorld(G) {
   const win = makeWindowTextures();
   const mats = {
     building: patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, map: win.day, emissiveMap: win.night, emissive: '#ffffff', emissiveIntensity: 0 })),
-    decal: patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 1.5 })),
+    decal: patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 1.5 }), { grain: true }),
     mark: patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true })),
     plain: patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true })),
     plainDouble: patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })),
@@ -146,11 +147,11 @@ export function createWorld(G) {
   const airports = createAirports(G, world, mats, lights);
   const props = createProps(G, world, hf, mats, lights);
   lights.build();
-  world._debug = { hf, terrain, sky, clouds, weather, lights, mats, timing: { heightfield: Math.round(T1 - T0), terrain: Math.round(T2 - T1), rest: Math.round(performance.now() - T2) } };
+  world._debug = { U, hf, terrain, sky, clouds, weather, lights, mats, timing: { heightfield: Math.round(T1 - T0), terrain: Math.round(T2 - T1), rest: Math.round(performance.now() - T2) } };
 
   const TREE_R = { low: [6500, 8500], medium: [10500, 13000], high: [15000, 18000] };
   let level = G.quality.level;
-  const applyQuality = () => { const r = TREE_R[G.quality.level] || TREE_R.medium; U.uTreeR.value.set(r[0], r[1]); };
+  const applyQuality = () => { const r = TREE_R[G.quality.level] || TREE_R.medium; U.uTreeR.value.set(r[0], r[1]); setWorldQuality(G.quality.level); };
   applyQuality();
   G.bus.on('quality:changed', () => {
     applyQuality();

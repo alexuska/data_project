@@ -1,7 +1,7 @@
 // Боевые учения: «Стрельбы на полигоне», «Перехват». Противник — условный, учебный.
 import * as THREE from 'three';
 import { S } from './engine.js';
-import { findLand, finalPoint, offset, windPhrase, rwNum, dist2, fmtTime, DEG } from './lib.js';
+import { findLand, finalPoint, offset, windPhrase, rwNum, dist2, fmtTime, DEG, fmtDist } from './lib.js';
 
 const RP = 'Руководитель стрельб';
 const KP = 'КП';
@@ -84,6 +84,17 @@ export const rangeL39 = {
       return {
         id: key,
         text: (m) => `${title}: ${total - left(m.data[key])}/${total}`,
+        title,
+        how: (m) => (m.data.photo
+          ? 'Наведи нос самолёта на красный прицел «ЦЕЛЬ» и держи её в центре экрана секунду — фотоконтроль засчитает попадание.'
+          : 'Наведи нос на красный прицел «ЦЕЛЬ»: зелёный кружок прицела — на цель. Жми и держи ОГОНЬ (кнопка справа). Ниже 100 м — выводи!'),
+        progress: (m) => {
+          const n = total - left(m.data[key]);
+          let d = 1e9;
+          for (const t of m.data[key]) if (t.alive !== false && !(t.hp <= 0)) d = Math.min(d, t.pos.distanceTo(m.ac.pos));
+          return { value: n, max: total, text: `поражено ${n} из ${total}${d < 1e8 ? ' · до ближней ' + fmtDist(d) : ''}` };
+        },
+        ctl: (m) => (m.data.photo ? null : 'fire'),
         markers: (m) => {
           const l = m.data[key].filter((t) => t.alive !== false && !(t.hp <= 0));
           if (l.length !== n) { n = l.length; mk = l.map((t) => ({ x: t.pos.x, y: t.pos.y + (t.kind === 'balloon' ? 0 : 4), z: t.pos.z, kind: 'target', label: '' })); }
@@ -190,7 +201,10 @@ export const intercept = {
         },
       }),
       {
-        text: (m) => `Перехват: сблизьтесь с целью · ${(dist(m) / 1000).toFixed(1)} км`,
+        text: 'Перехват: сблизься с целью', title: 'Перехват',
+        how: 'Лети на красную метку «ЦЕЛЬ · Нарушитель». РУД — вверх до упора (форсаж). Высота цели — 1300 м.',
+        progress: (m) => ({ value: Math.max(0, 30000 - dist(m)), max: 28500, text: `до цели ${fmtDist(dist(m))}` }),
+        ctl: (m) => (m.ac.throttle < 0.95 ? 'thr-up' : null),
         markers: track,
         enter(m) { m.radio(KP, 'Цель на метке. Курс на перехват, набирайте 1300. Шасси убрать!'); },
         update(m) {
@@ -199,7 +213,10 @@ export const intercept = {
         },
       },
       {
-        text: 'Опознавание: подойдите на 600 м и покачайте крыльями',
+        text: 'Опознавание: покачай крыльями', title: 'Опознавание',
+        how: 'Подойди к нарушителю ближе 1 км и покачай крыльями: ручку влево, вправо, влево — 3 раза. Это сигнал «следуй за мной».',
+        progress: (m) => ({ value: Math.min(3, m.data.rock.n), max: 3, text: `покачиваний ${Math.min(3, m.data.rock.n)} из 3 · до цели ${fmtDist(dist(m))}` }),
+        ctl: 'stick',
         markers: track,
         enter(m) { m.radio(KP, 'Цель вижу. Подойдите ближе и покачайте крыльями — сигнал «Следуй за мной».'); },
         update(m) {
@@ -216,7 +233,10 @@ export const intercept = {
         },
       },
       {
-        text: (m) => (m.data.photo ? 'Цель в прицел: фотоконтроль' : 'Огонь разрешаю: уничтожьте нарушителя'),
+        text: (m) => (m.data.photo ? 'Цель в прицел: фотоконтроль' : 'Огонь разрешаю: порази нарушителя'), title: 'Огонь!',
+        how: (m) => (m.data.photo ? 'Держи нарушителя в центре экрана секунду — фотоконтроль засчитает.' : 'Зайди нарушителю в хвост, наведи нос на красную рамку и жми ОГОНЬ. Ракеты — кнопка ПУСК, когда рамка станет сплошной.'),
+        progress: (m) => ({ value: Math.max(0, 3000 - dist(m)), max: 3000, text: `до цели ${fmtDist(dist(m))}` }),
+        ctl: (m) => (m.data.photo ? null : 'fire'),
         markers: track,
         enter(m) {
           m.radio('Нарушитель', '…', { now: true });

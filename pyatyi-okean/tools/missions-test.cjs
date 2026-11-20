@@ -129,11 +129,11 @@ function pageDriver(id) {
         for (let i = 0; i < 12; i++) G.debug.advance(1, i === 11);
         off(); off2();
         const r = G.missions.active;
-        return { plane: G.player && G.player.specId, mode: G.mode, active: !!r, step: r && r.m.index, obj: document.querySelector('.hud-obj span')?.textContent, radios: radios.length, errors: { ...G.errors } };
+        return { plane: G.player && G.player.specId, mode: G.mode, active: !!r, step: r && r.m.index, obj: document.querySelector('.hud-guide-title')?.textContent, how: document.querySelector('.hud-guide-how')?.textContent, prog: document.querySelector('.hud-guide-prog span')?.textContent, radios: radios.length, errors: { ...G.errors } };
       }, id);
       const errs = Object.keys(s.errors).length;
       row.start = s.active && s.mode === 'flight' && !errs ? 'ок' : `ошибка (${s.mode}, ${JSON.stringify(s.errors)})`;
-      row.info = `${s.plane}, шаг ${s.step}, радио ${s.radios}, цель «${s.obj || ''}»`;
+      row.info = `${s.plane}, шаг ${s.step}, радио ${s.radios}, карточка «${s.obj || ''}» — ${(s.how || '').slice(0, 70)}… [${s.prog || ''}]`;
       const r = await page.evaluate(pageDriver, id);
       const e = r.end;
       row.smoke = e && e.success && e.stars >= 1 ? `ок ★${e.stars}` : `ошибка: ${e ? e.reason + ' ' + e.title : 'нет flight:end'} [${r.log}]`;

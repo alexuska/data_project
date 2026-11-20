@@ -3,12 +3,13 @@
 import * as THREE from 'three';
 import { clamp, lerp, smoothstep, DEG } from '../core/util.js';
 import { U, FOG_PARS } from './env.js';
+import { POI_BY_ID } from './layout.js';
 
 // Ключевые кадры по высоте солнца над горизонтом (градусы)
 const KE = [-18, -8, -3, 0, 4, 10, 25, 60];
 const K = {
-  zenith: ['#050a1c', '#0b1638', '#1a2c62', '#27468a', '#2e62ae', '#2f72c6', '#2f7fd8', '#2a78d6'],
-  fogA: ['#0d1830', '#1b2748', '#474a7c', '#8a7fa6', '#c6a6b2', '#ccbcc8', '#b8d6ee', '#bfe0f5'],
+  zenith: ['#040918', '#0a1534', '#192a5e', '#244284', '#2a5aa6', '#2b6cc0', '#2b7bd6', '#2674d4'],
+  fogA: ['#0d1830', '#1b2748', '#474a7c', '#8a7fa6', '#c9a9a8', '#cfc2c0', '#b8d6ee', '#bfe0f5'],
   fogSun: ['#0d1830', '#6a3a48', '#e0683a', '#ff9648', '#ffc070', '#ffe2ae', '#d8eaf4', '#d2eaf8'],
   sun: ['#000000', '#000000', '#ff5a2a', '#ff7c3a', '#ffae62', '#ffd69c', '#fff0d8', '#fff6ea'],
   hemiSky: ['#4a62b0', '#4e60aa', '#6c6eb4', '#8c86c0', '#9ea6d8', '#aabfe8', '#bcd6f6', '#c6e0ff'],
@@ -70,6 +71,7 @@ export function createSky(G, world) {
     uGlow: { value: new THREE.Color('#fff4e0') },
     uSkyP: { value: new THREE.Vector4(4.5, 0.2, 0, 0) }, // x: кривая градиента, y: сила ореола, z: «в облаке», w: вспышка молнии
     uCloudCol: { value: new THREE.Color('#ffffff') },
+    uCity: { value: new THREE.Vector4(0, 1, 0, 30) }, // xy: направление на город, z: сила зарева, w: спад по высоте
   };
   const dome = new THREE.Mesh(
     new THREE.IcosahedronGeometry(1000, 3),
@@ -96,27 +98,46 @@ export function createSky(G, world) {
         uniform vec3 uGlow;
         uniform vec4 uSkyP;
         uniform vec3 uCloudCol;
+        uniform vec4 uCity;
         void main() {
           vec3 d = normalize(vDir);
           vec3 hor = wfogColor(d);
           float h = max(d.y, 0.0);
+          // градиент зенит → горизонт; у самого горизонта — светлая полоса
           float t = pow(1.0 - h, uSkyP.x);
           vec3 col = mix(uZenith, hor, t);
-          float sd = max(dot(d, uSunPos), 0.0);
-          float above = smoothstep(-0.03, 0.02, d.y);
-          float s8 = sd * sd; s8 *= s8; s8 *= s8;
-          float s64 = s8 * s8; s64 *= s64; s64 *= s64;
-          col += uGlow * uSkyP.y * (s8 * 0.16 + s64 * 0.3 + pow(s64, 6.0) * 0.5) * (0.35 + 0.65 * above);
-          float disc = smoothstep(0.99955, 0.99972, sd);
-          col += uSunDisc * disc * above;
+          col = mix(col, hor * 1.06, (1.0 - smoothstep(0.0, 0.06, h)) * 0.5);
+          // ниже горизонта (видно с высоты) — дымка чуть темнее
+          col = mix(col, hor * 0.93, smoothstep(0.0, -0.25, d.y));
+          float sd = dot(d, uSunPos);
+          float sdp = max(sd, 0.0);
+          float above = smoothstep(-0.04, 0.02, d.y);
+          // рассеяние Ми вокруг солнца (Хеньи — Гринстейн) + широкое тёплое гало
+          float g = 0.8;
+          float mie = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * sd, 1.5);
+          float s8 = sdp * sdp; s8 *= s8; s8 *= s8;
+          col += uGlow * uSkyP.y * (mie * 0.034 + s8 * 0.16) * (0.35 + 0.65 * above);
+          // солнечный диск с потемнением к краю и короной
+          float disc = smoothstep(0.99962, 0.99978, sd);
+          float limb = 0.8 + 0.2 * smoothstep(0.99962, 0.99995, sd);
+          col += uSunDisc * (disc * limb * 1.25 + pow(sdp, 2200.0) * 0.8) * above;
+          // луна с ореолом
           float md = max(dot(d, uMoonDir), 0.0);
           float m8 = md * md; m8 *= m8; m8 *= m8;
           float m64 = m8 * m8; m64 *= m64; m64 *= m64;
-          float mdisc = smoothstep(0.99975, 0.99985, md);
-          col += uMoonCol * (mdisc * 1.1 + pow(m64, 5.0) * 0.22 + m64 * 0.05) * above;
+          float mdisc = smoothstep(0.99975, 0.99986, md);
+          col += uMoonCol * (mdisc * 1.15 + pow(m64, 5.0) * 0.25 + m64 * 0.07 + m8 * 0.015) * above;
+          // зарево города у горизонта
+          vec2 dh = d.xz / max(length(d.xz), 1e-4);
+          float cg = max(dot(dh, uCity.xy), 0.0);
+          cg = cg * cg; cg *= cg;
+          col += vec3(1.0, 0.52, 0.22) * uCity.z * cg * exp(-max(d.y + 0.01, 0.0) * uCity.w);
           col = mix(col, hor, uSkyP.z);
           col += vec3(0.75, 0.8, 1.0) * uSkyP.w;
-          gl_FragColor = vec4(col, 1.0);
+          // лёгкий дизеринг против полос градиента на 8-битном экране
+          vec2 fc = gl_FragCoord.xy;
+          col += (fract(sin(dot(fc, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * (1.5 / 255.0);
+          gl_FragColor = vec4(max(col, 0.0), 1.0);
           #include <colorspace_fragment>
         }`,
     })
@@ -308,6 +329,13 @@ export function createSky(G, world) {
     skyU.uGlow.value.copy(cGlow);
     skyU.uSkyP.value.set(curve, glowAmt, inCloud, flash * 0.5);
     skyU.uCloudCol.value.copy(cloudCol);
+    // зарево города на горизонте ночью
+    {
+      const cp = POI_BY_ID.city_yasny;
+      const cdx = cp.x - cam.position.x, cdz = cp.z - cam.position.z, cd = Math.hypot(cdx, cdz) || 1;
+      const amt = smoothstep(0.25, 0.9, env.lightsOn) * (1 - uk * 0.6) * (1 - wx.haze * 0.5) * 0.085 * (1 - smoothstep(4000, 32000, cd)) * smoothstep(900, 3500, cd);
+      skyU.uCity.value.set(cdx / cd, cdz / cd, amt, 9 + 6e4 / Math.max(cd, 2000));
+    }
     dome.visible = true;
 
     // ---- звёзды ----

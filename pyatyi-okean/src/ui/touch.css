@@ -150,8 +150,33 @@
 .touch-hint b { display: block; font-family: var(--f-display); font-weight: 600; letter-spacing: 0.14em; color: var(--dawn-2); font-size: calc(11 * var(--u)); }
 .touch-hint-stick { inset-inline-start: calc(var(--sa-l) + 18 * var(--u)); bottom: calc(var(--sa-b) + 176 * var(--u)); }
 .touch-hint-thr { inset-inline-end: calc(var(--sa-r) + 196 * var(--u)); bottom: calc(var(--sa-b) + 150 * var(--u)); max-width: calc(120 * var(--u)); }
-.touch-hint-look { left: 50%; top: 31%; transform: translateX(-50%); max-width: calc(250 * var(--u)); text-align: center; animation: none; }
+.touch-hint-look { left: 50%; top: 42%; transform: translateX(-50%); max-width: calc(250 * var(--u)); text-align: center; animation: none; }
 
+/* ---------- подсветка «что трогать сейчас» (highlight из карточки задачи) ---------- */
+.touch-btn.is-guide { border: 2.5px solid var(--dawn-2); animation: touch-guide 1s ease-in-out infinite; }
+.touch-thr.is-guide .touch-thr-track { border: 2.5px solid var(--dawn-2); animation: touch-guide 1s ease-in-out infinite; }
+.touch-thr.is-guide .touch-thr-handle { animation: touch-guide 1s ease-in-out infinite; }
+.touch-stick.is-guide { opacity: 1; }
+.touch-stick.is-guide .touch-stick-base { border: 2.5px solid var(--dawn-2); animation: touch-guide 1s ease-in-out infinite; }
+.touch-guide {
+  position: absolute; left: 0; top: 0; width: 0; height: 0; direction: ltr;
+  font-family: var(--f-display); font-weight: 600; font-size: calc(11 * var(--u)); letter-spacing: 0.1em; color: var(--night); white-space: nowrap;
+}
+.touch-guide::before {
+  content: attr(data-label); position: absolute; padding: calc(4 * var(--u)) calc(9 * var(--u)); border-radius: calc(8 * var(--u));
+  background: var(--dawn-2); box-shadow: 0 calc(2 * var(--u)) calc(8 * var(--u)) rgba(0, 0, 0, 0.45);
+  animation: touch-float 1.4s ease-in-out infinite;
+}
+.touch-guide[data-side="top"]::before { left: 0; bottom: calc(6 * var(--u)); transform: translateX(-50%); }
+.touch-guide[data-side="left"]::before { right: calc(6 * var(--u)); top: 0; transform: translateY(-50%); }
+.touch-guide[data-side="right"]::before { left: calc(6 * var(--u)); top: 0; transform: translateY(-50%); }
+/* уголок-стрелка к элементу */
+.touch-guide::after { content: ''; position: absolute; border: calc(6 * var(--u)) solid transparent; }
+.touch-guide[data-side="top"]::after { left: calc(-6 * var(--u)); bottom: calc(-6 * var(--u)); border-top-color: var(--dawn-2); }
+.touch-guide[data-side="left"]::after { right: calc(-6 * var(--u)); top: calc(-6 * var(--u)); border-left-color: var(--dawn-2); }
+.touch-guide[data-side="right"]::after { left: calc(-6 * var(--u)); top: calc(-6 * var(--u)); border-right-color: var(--dawn-2); }
+
+@keyframes touch-guide { 50% { box-shadow: 0 0 0 calc(7 * var(--u)) rgba(255, 197, 107, 0.4), 0 0 calc(18 * var(--u)) rgba(255, 154, 61, 0.55); } }
 @keyframes touch-blink { 50% { opacity: 0.25; } }
 @keyframes touch-pulse { 50% { box-shadow: 0 0 0 calc(6 * var(--u)) rgba(255, 154, 61, 0.28); } }
 @keyframes touch-float { 50% { translate: 0 calc(-3 * var(--u)); } }

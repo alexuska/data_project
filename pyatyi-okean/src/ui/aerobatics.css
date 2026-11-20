@@ -1,4 +1,4 @@
-/* Пилотаж: плашка выполненной фигуры. Под строкой цели/радио, над самолётом; приборы внизу не перекрывает. */
+/* Пилотаж: плашка выполненной фигуры. Под карточкой задачи (--guide-b ставит ui/hud.js), над самолётом; приборы внизу не перекрывает. */
 :root {
   --aero-glow: rgba(255, 154, 61, 0.45);    /* рассветное свечение плашки */
   --aero-panel: rgba(11, 22, 38, 0.8);       /* плотное стекло под крупным текстом */
@@ -9,7 +9,7 @@
   --au: clamp(0.85px, min(calc(100vw / 844), calc(100vh / 390)), 1.5px);
 }
 .aero-plate {
-  position: absolute; left: 50%; top: calc(var(--sa-t) + 64 * var(--au));
+  position: absolute; left: 50%; top: calc(var(--guide-b, calc(var(--sa-t) + 56px)) + 8 * var(--au)); /* под карточкой задачи */
   transform: translateX(-50%);
   display: flex; flex-direction: column; align-items: center;
   min-width: calc(220 * var(--au)); max-width: 86vw; box-sizing: border-box;

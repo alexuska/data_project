@@ -1,6 +1,7 @@
 // ЗАДАНИЯ. Контракт — в ARCHITECTURE.md (раздел «Миссии» и «Описание задания»).
 // Сценарии — в training.js, civil.js, rescue.js, combat.js; движок шагов — engine.js; помощники — lib.js.
 import { createRunner } from './engine.js';
+import { createErrands } from './errands.js';
 import { firstFlight, dniesterCircle, aeroSchool } from './training.js';
 import * as civil from './civil.js';
 import * as special from './special.js';
@@ -52,7 +53,10 @@ export function createMissions(G) {
     },
     update(dt) {
       if (runner) runner.update(dt);
+      else if (missions.errands) missions.errands.update(dt);
     },
   };
+  // поручения вышки в свободном полёте (missions/errands.js)
+  missions.errands = createErrands(G);
   return missions;
 }

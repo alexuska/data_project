@@ -31,7 +31,7 @@ export const TRICKS = {
   loop: { name: 'Мёртвая петля', score: 250, xp: 5, money: 25 },
   immelmann: { name: 'Иммельман', score: 300, xp: 6, money: 30 },
   splits: { name: 'Переворот', score: 250, xp: 5, money: 25 },
-  chandelle: { name: 'Боевой разворот', score: 200, xp: 4, money: 20 },
+  chandelle: { name: 'Боевой разворот', score: 200, xp: 4, money: 20, full: 'Боевой разворот: разворот на 180° с набором высоты' },
   turn360: { name: 'Глубокий вираж', score: 150, xp: 3, money: 15 },
   inverted: { name: 'Перевёрнутый полёт', score: 200, xp: 4, money: 20 },
   knife: { name: 'Полёт на ноже', score: 250, xp: 5, money: 25 },
@@ -48,10 +48,16 @@ const REWARD_CAP = { xp: 60, money: 400 }; // потолок награды за
 
 const _f = new Vector3(), _u = new Vector3();
 
-// Чистый распознаватель. onTrick(id, ac) зовётся при завершении фигуры. step() не выделяет память.
+const RAD = 180 / Math.PI;
+// боевой разворот (щедро, для пальца на экране): разворот по курсу носа на 150°+ в одну сторону, набор 25 м+, не вверх ногами
+export const CHANDELLE = { turn: 150 / RAD, climb: 25, nose: 0.1 };
+
+// Чистый распознаватель. onTrick(id, ac) зовётся при завершении фигуры, onFail(id, reason, ac) — при сорванной попытке
+// (reason: 'released' | 'slow' | 'stall' | 'alt' | 'noclimb' | 'reverse' | 'drift' | 'over'). step() не выделяет память.
 export class TrickDetector {
-  constructor(onTrick = null) {
+  constructor(onTrick = null, onFail = null) {
     this.onTrick = onTrick;
+    this.onFail = onFail;
     this.reset(null);
   }
 
@@ -64,6 +70,10 @@ export class TrickDetector {
     this.pitchTot = 0; // интеграл угловой скорости тангажа (нос вверх +), рад
     this.trk = 0; // путевой угол (по вектору скорости), рад
     this.trkOk = false;
+    this.cHdg = 0; this.cHdgOk = false;
+    this.fail = null; // последняя сорванная попытка { id, reason, t }
+    this.failSeq = 0;
+    this.stallNoted = false;
     this.clear();
   }
 
@@ -73,7 +83,9 @@ export class TrickDetector {
     this.rRun = 0; this.rQuiet = 0; this.rCount = 0; this.rTrk0 = 0; this.rTrkOk0 = false; this.rPitch0 = 0; this.rMaxAgl = 0;
     // выход из горизонта
     this.refOk = false; this.refTrk = 0; this.refAlt = 0; this.refRoll = 0; this.refPitch = 0;
-    this.exc = false; this.eMaxFy = 0; this.eMinFy = 0; this.eInv = false; this.eUsed = false; this.eTrk = 0;
+    this.exc = false; this.eMaxFy = 0; this.eMinFy = 0; this.eInv = false; this.eUsed = false; this.eTrk = 0; this.eMinIas = 0;
+    // боевой разворот: накопленный разворот по курсу в одну сторону и набор высоты
+    this.cOn = false; this.cAcc = 0; this.cAlt0 = 0; this.cMaxFy = 0; this.cInv = false; this.cQuiet = 0; this.cDone = false;
     // поворот на горке
     this.hhPhase = 0; this.hhT = 0; this.hhMinIas = 0; this.hhBack = false;
     // вираж
@@ -88,6 +100,31 @@ export class TrickDetector {
     if (this.validT < WARMUP) return; // сразу после старта/взлёта не засчитываем
     if (this.onTrick) this.onTrick(id, this.ac);
   }
+  failed(id, reason) {
+    if (this.validT < WARMUP) return;
+    this.fail = { id, reason, t: this.t };
+    this.failSeq++;
+    if (this.onFail) this.onFail(id, reason, this.ac);
+  }
+  // какая фигура сейчас «в работе» (для причины срыва)
+  inProgress() {
+    if (this.exc && this.refOk && this.pitchTot - this.refPitch > 1.0) return 'loop';
+    if (this.cOn && Math.abs(this.cAcc) > 0.8) return 'chandelle';
+    if (Math.abs(this.rRun) > 1.0) return 'roll';
+    return null;
+  }
+  // живой прогресс фигуры: { active, value, max, climb? } — градусы
+  progress(id) {
+    if (id === 'roll' || id === 'roll2') return { active: this.rRun !== 0, value: Math.min(360, Math.abs(this.rRun) * RAD), max: 360 };
+    if (id === 'loop') {
+      const d = this.exc && this.refOk ? this.pitchTot - this.refPitch : 0;
+      return { active: d > 0.15, value: Math.max(0, Math.min(360, d * RAD)), max: 360 };
+    }
+    if (id === 'chandelle') {
+      return { active: this.cOn, value: this.cOn ? Math.min(180, Math.abs(this.cAcc) * RAD) : 0, max: 180, climb: this.cOn && this.ac ? this.ac.pos.y - this.cAlt0 : 0 };
+    }
+    return { active: false, value: 0, max: 1 };
+  }
 
   step(ac, dt) {
     if (ac !== this.ac) this.reset(ac);
@@ -101,8 +138,12 @@ export class TrickDetector {
     }
     if (ac.stalled) {
       this.stallT += dt;
-      if (this.stallT > 0.6) { this.clear(); return; }
-    } else this.stallT = 0;
+      if (this.stallT > 0.6) {
+        if (!this.stallNoted) { this.stallNoted = true; const w = this.inProgress(); if (w) this.failed(w, 'stall'); }
+        this.clear();
+        return;
+      }
+    } else { this.stallT = 0; this.stallNoted = false; }
     this.validT += dt;
 
     const spec = ac.spec, vS = spec.vStall;
@@ -144,13 +185,17 @@ export class TrickDetector {
         if (drift < 1.2 && pit < 2.4) {
           if (this.rCount === 1) this.emit(this.rMaxAgl < 30 ? 'lowroll' : 'roll');
           else if (this.rCount === 2) this.emit('roll2');
-        }
+        } else if (this.rCount === 1) this.failed('roll', 'drift');
       }
     } else if (Math.abs(p) > RR) {
+      if (this.rCount === 0 && Math.abs(this.rRun) > 1.4) this.failed('roll', 'reverse');
       this.rRun = 0; // сменил направление — новая бочка начнётся со следующего шага
     } else {
       this.rQuiet += dt;
-      if (this.rQuiet > 0.5) this.rRun = 0;
+      if (this.rQuiet > 0.5) {
+        if (this.rCount === 0 && Math.abs(this.rRun) > 1.4) this.failed('roll', 'released');
+        this.rRun = 0;
+      }
     }
 
     // ---------- выход из горизонта: петля, иммельман, переворот, боевой разворот, поворот на горке ----------
@@ -158,13 +203,14 @@ export class TrickDetector {
     if (level) {
       if (this.exc) {
         this.exc = false;
-        if (this.refOk && !this.eUsed) this.evalExcursion(alt);
+        if (this.refOk && !this.eUsed) this.evalExcursion(alt, vS);
       }
       this.refOk = true; this.refTrk = this.trk; this.refAlt = alt; this.refRoll = this.rollTot; this.refPitch = this.pitchTot;
     } else {
       if (!this.exc) {
-        this.exc = true; this.eMaxFy = fy; this.eMinFy = fy; this.eInv = false; this.eUsed = false; this.eTrk = 0; this.hhPhase = 0;
+        this.exc = true; this.eMaxFy = fy; this.eMinFy = fy; this.eInv = false; this.eUsed = false; this.eTrk = 0; this.hhPhase = 0; this.eMinIas = ias;
       }
+      if (ias < this.eMinIas) this.eMinIas = ias;
       if (fy > this.eMaxFy) this.eMaxFy = fy;
       if (fy < this.eMinFy) this.eMinFy = fy;
       if (uy < -0.5) this.eInv = true;
@@ -182,6 +228,43 @@ export class TrickDetector {
             this.emit('hammerhead');
           }
         } else if (this.t - this.hhT > 40) this.hhPhase = 2; // у истребителей горка долгая
+      }
+    }
+
+    // ---------- боевой разворот: разворот 150°+ с набором высоты (засчитывается сразу, без выхода в горизонт) ----------
+    // считаем по курсу носа (его игрок видит на шкале курса); на крутом подъёме курс не определён — пропускаем
+    const hdgOk = Math.abs(fy) < 0.9;
+    const dHdg = hdgOk && this.cHdgOk ? wrapPi(ac.heading - this.cHdg) : 0;
+    this.cHdg = ac.heading; this.cHdgOk = hdgOk;
+    if (!this.cOn) {
+      if (trkOk && ab > 0.26 && uy > 0) {
+        this.cOn = true; this.cAcc = 0; this.cAlt0 = alt; this.cMaxFy = fy; this.cInv = false; this.cQuiet = 0; this.cDone = false;
+      }
+    } else {
+      if (dHdg !== 0 && this.cAcc !== 0 && (dHdg > 0) !== (this.cAcc > 0) && Math.abs(dHdg) > 0.004 && Math.abs(this.cAcc) > 0.35) {
+        if (!this.cDone && Math.abs(this.cAcc) > 1.05) this.failed('chandelle', 'reverse');
+        this.cOn = false; // сменил сторону
+      } else {
+        this.cAcc += dHdg;
+        if (fy > this.cMaxFy) this.cMaxFy = fy;
+        if (uy < -0.6 && !this.cInv) { // перевернулся: тянул с большим креном — это уже не боевой разворот
+          this.cInv = true;
+          if (!this.cDone) { if (Math.abs(this.cAcc) > 0.7) this.failed('chandelle', 'over'); this.cOn = false; }
+        }
+        this.cQuiet = ab < 0.17 ? this.cQuiet + dt : 0;
+        const climb = alt - this.cAlt0;
+        if (!this.cDone && !this.cInv && Math.abs(this.cAcc) >= CHANDELLE.turn && climb >= CHANDELLE.climb && this.cMaxFy > CHANDELLE.nose) {
+          this.cDone = true;
+          if (this.exc) this.eUsed = true;
+          this.emit('chandelle');
+        }
+        if (this.cQuiet > 1.5) { // выровнял крыло
+          if (!this.cDone && !this.cInv && Math.abs(this.cAcc) > 1.05) this.failed('chandelle', Math.abs(this.cAcc) >= CHANDELLE.turn ? 'noclimb' : 'released');
+          this.cOn = false;
+        } else if (climb < -80) {
+          if (!this.cDone && !this.cInv && Math.abs(this.cAcc) > 0.7) this.failed('chandelle', 'alt');
+          this.cOn = false;
+        } else if (Math.abs(this.cAcc) > 5.3) this.cOn = false; // это уже вираж, а не боевой разворот
       }
     }
 
@@ -234,7 +317,7 @@ export class TrickDetector {
   }
 
   // вернулись в горизонтальный полёт: что это было?
-  evalExcursion(alt) {
+  evalExcursion(alt, vS) {
     const dTrk = Math.abs(wrapPi(this.trk - this.refTrk));
     const dAlt = alt - this.refAlt;
     const dRoll = Math.abs(this.rollTot - this.refRoll);
@@ -243,7 +326,7 @@ export class TrickDetector {
     if (this.eInv && dPitch > 5.0 && this.eMaxFy > 0.5 && this.eMinFy < -0.3 && dRoll < 2.1) this.emit('loop');
     else if (this.eInv && half && dTrk > 2.2 && dAlt > 25 && this.eMaxFy > 0.6) this.emit('immelmann');
     else if (this.eInv && half && dTrk > 2.2 && dAlt < -25 && this.eMinFy < -0.4) this.emit('splits');
-    else if (!this.eInv && dTrk > 2.4 && Math.abs(this.eTrk) > 2.4 && Math.abs(this.eTrk) < 4.2 && dAlt > 40 && this.eMaxFy > 0.2) this.emit('chandelle');
+    else if (dPitch > 1.6 && dPitch < 5.0 && this.eMaxFy > 0.5) this.failed('loop', this.eMinIas < 1.08 * vS ? 'slow' : 'released');
   }
 }
 
@@ -261,8 +344,43 @@ export function createAerobatics(G) {
     detector: null,
     update,
     reset,
+    progress,
   };
-  const det = (A.detector = new TrickDetector(onTrick));
+  const det = (A.detector = new TrickDetector(onTrick, onFail));
+
+  // сорванная попытка фигуры — событие 'trick:fail' { id, reason, ac } (расширение контракта; слушает «Школа пилотажа»)
+  function onFail(id, reason, ac) {
+    G.bus.emit('trick:fail', { id, reason, ac });
+  }
+
+  // Живой прогресс фигуры для подсказок: { active, value, max, text, hint, climb? } (value/max — градусы).
+  function progress(id) {
+    const r = det.progress(id);
+    const ac = G.player;
+    const v = Math.round(r.value / 5) * 5;
+    let text = `${v}° из ${r.max}°`, hint = '';
+    const slow = ac && ac.ias < ac.spec.vStall * 1.2;
+    if (id === 'roll') {
+      hint = !r.active ? 'Ручку вбок до упора — и держи' : r.value < 290 ? 'Держи ручку вбок, не отпускай!' : 'Почти! Теперь ручку в центр';
+    } else if (id === 'loop') {
+      hint = !r.active ? 'Ручку на себя до упора — и держи'
+        : slow && r.value > 60 && r.value < 220 ? 'Мало скорости — держи ручку, газ полный!'
+          : r.value < 140 ? 'Тяни, не отпускай!' : r.value < 250 ? 'Ты вверх ногами — продолжай тянуть!' : 'Нос идёт вниз — выводи в горизонт';
+    } else if (id === 'chandelle') {
+      const climb = Math.round(r.climb || 0);
+      text = `${v}° из 180° · набор ${climb > 0 ? climb : 0} м`;
+      const noseUp = ac && ac.pitch > 0.12, bank = ac ? Math.abs(ac.bank) * RAD : 0;
+      hint = !r.active ? 'Ручку коротко вбок — крыло наклонится'
+        : slow ? 'Скорость падает — ручку чуть отпусти, газ полный'
+          : bank > 68 && r.value < 140 ? 'Крен велик — ручку чуть в обратную сторону'
+            : bank < 18 && r.value < 120 ? 'Крен мал — ручку чуть вбок'
+              : ac && ac.pitch > 0.75 ? 'Нос слишком высоко — ослабь ручку'
+                : !noseUp && r.value < 120 ? 'Тяни ручку на себя — нос вверх!'
+                  : climb < 0 && r.value > 60 ? 'Нос выше — нужен набор высоты!'
+                    : r.value >= 130 ? 'Почти развернулся! Держи ещё чуть-чуть' : 'Хорошо! Держи крен и тяни — разворачивайся дальше';
+    }
+    return { active: r.active, value: r.value, max: r.max, climb: r.climb, text, hint };
+  }
 
   // ---- плашка ----
   const root = document.createElement('div');
@@ -321,7 +439,10 @@ export function createAerobatics(G) {
     // награда: небольшая, убывает за повторы, есть потолок; в пробном вылете — нет
     const trial = !!(G.flight && G.flight.session && G.flight.session.trial);
     const k = n < REWARD_K.length ? REWARD_K[n] : 0;
-    if (!trial && k > 0 && G.career && G.career.addReward) {
+    // без двойной оплаты: в задании платит задание; первую бочку/петлю оплачивает достижение карьеры
+    const inMission = !!(G.missions && G.missions.active);
+    const achPays = (id === 'roll' || id === 'loop') && !(prof && prof.achievements && prof.achievements[id]);
+    if (!trial && !inMission && !achPays && k > 0 && G.career && G.career.addReward) {
       const xp = Math.min(Math.round(def.xp * k * (A.combo > 1 ? 1.5 : 1)), REWARD_CAP.xp - paid.xp);
       const money = Math.min(Math.round(def.money * k), REWARD_CAP.money - paid.money);
       if (xp > 0 || money > 0) {

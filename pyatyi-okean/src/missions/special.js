@@ -1,6 +1,6 @@
 // Спасатели и особые задания: «Пожар у Бри-Конт-Робер» (Бе-200), «Чкаловский пролёт».
 import { S } from './engine.js';
-import { findLand, findScoop, finalPoint, windPhrase, rwNum, dist2, clamp, fmtTime, offset } from './lib.js';
+import { findLand, findScoop, finalPoint, windPhrase, rwNum, dist2, clamp, fmtTime, offset, fmtDist } from './lib.js';
 
 const HQ = 'Штаб тушения';
 
@@ -49,7 +49,7 @@ export const fireResort = {
       const y = m.world.groundAt(p.x, p.z).y;
       const pos = { x: p.x, y, z: p.z };
       const fx = (G.fx && G.fx.fire && G.fx.fire(pos, 3.2)) || null;
-      return { x: p.x, z: p.z, y, hp: FIRE_HP, alive: true, fx, mk: { x: p.x, y: y + 20, z: p.z, kind: 'target', label: 'Очаг' } };
+      return { x: p.x, z: p.z, y, hp: FIRE_HP, alive: true, fx, mk: { x: p.x, y: y + 20, z: p.z, kind: 'fire', label: '' } };
     });
     m.on('input:action', (e) => {
       if (!e || e.id !== 'drop') return;
@@ -69,6 +69,16 @@ export const fireResort = {
           const p = Math.round(((m.ac.payload || 0) / CAP) * 100);
           return (m.data.trips ? `Ходка ${m.data.trips + 1}: ` : '') + (p > 0 ? `Набор воды: ${p}%` : 'Набор воды: глиссирование по морю');
         },
+        title: (m) => (m.data.trips ? `Ходка ${m.data.trips + 1}: набор воды` : 'Набор воды из моря'),
+        how: (m) => (m.ac.onWater
+          ? 'Ты на воде! Держи РУД вверху — самолёт скользит и набирает воду. Баки полные — ручку на себя, взлетай.'
+          : 'Убери шасси и садись на воду у метки «Набор воды»: газ поменьше, нос чуть вверх. На воде — РУД снова вверх.'),
+        progress: (m) => {
+          const p = Math.round(((m.ac.payload || 0) / CAP) * 100);
+          const d = dist2(m.ac.pos.x, m.ac.pos.z, g.scoop.x, g.scoop.z);
+          return { value: p, max: 100, text: `вода в баках ${p}%` + (m.ac.onWater || d < 600 ? '' : ` · до места ${fmtDist(d)}`) };
+        },
+        ctl: (m) => (m.ac.gearDown && !m.ac.onWater && !m.ac.onGround ? 'gear' : m.ac.onWater && m.ac.throttle < 0.8 ? 'thr-up' : null),
         markers: scoopMk,
         enter(m) {
           if (!m.data.trips) {
@@ -95,6 +105,16 @@ export const fireResort = {
         text: (m) => {
           const n = live().length;
           return `Сброс на очаги с 40–80 м · осталось ${n}`;
+        },
+        title: 'Сброс воды на пожар',
+        how: 'Лети низко, 40–80 м, прямо на красную метку «ПОЖАР». Чуть-чуть не долетая — жми большую кнопку «Сброс воды» справа.',
+        progress: (m) => {
+          const n = m.data.fires.length, k = n - live().length, p = Math.round(((m.ac.payload || 0) / CAP) * 100);
+          return { value: k, max: n, text: `потушено ${k} из ${n} · вода ${p}% · высота ${Math.round(m.ac.agl)} м над землёй` };
+        },
+        ctl: (m) => {
+          const ac = m.ac;
+          return m.data.btn && live().some((f) => dist2(ac.pos.x, ac.pos.z, f.x, f.z) < 900) ? 'action' : null;
         },
         markers: () => {
           const l = live();
@@ -231,7 +251,12 @@ export const chkalov = {
         altHint: (m) => m.hint('alt', 'Штурман', 'Высоковато! Над рекой — 25–30 метров, иначе под мост не попасть.', 10),
       }),
       {
-        id: 'pass', text: 'Под мост! Высота не больше 25 м',
+        id: 'pass', text: 'Под мост! Высота не больше 25 м', title: 'Пролёт под мостом',
+        how: 'Снизься до 15–25 м над водой и лети прямо в кольцо «ПОД МОСТ» — между опорами, под пролётом. Ручку двигай плавно.',
+        progress: (m) => {
+          const ac = m.ac, d = dist2(ac.pos.x, ac.pos.z, g.mid, g.bz);
+          return { value: Math.max(0, 1500 - d), max: 1500, text: `до моста ${fmtDist(d)} · высота ${Math.round(ac.agl)} м${ac.agl > 30 ? ' — ниже!' : ''}` };
+        },
         markers: ring,
         enter(m) { m.data.prevZ = m.ac.pos.z; m.data.tries = (m.data.tries || 0) + 1; },
         update(m) {

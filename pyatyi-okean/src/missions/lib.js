@@ -5,6 +5,8 @@ export { DEG, clamp, wrapPi, wrapTau, headingVec, vecHeading };
 export const KMH = 3.6;
 export const kmh = (v) => Math.round((v * 3.6) / 5) * 5;
 export const dist2 = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
+// расстояние для карточек и маркеров: «450 м», «2,3 км», «14 км»
+export const fmtDist = (d) => (d < 1000 ? Math.round(d / 10) * 10 + ' м' : d < 10000 ? (d / 1000).toFixed(1).replace('.', ',') + ' км' : Math.round(d / 1000) + ' км');
 export const fmtTime = (s) => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 export const plural = (n, one, few, many) => {
   const a = Math.abs(n) % 100, b = a % 10;

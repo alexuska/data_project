@@ -1,4 +1,5 @@
-// МАРКЕРЫ В МИРЕ: значок + подпись + дистанция; если точка вне кадра — стрелка у края обзорной области.
+// МАРКЕРЫ В МИРЕ: значок + подпись «что это» + имя + дистанция («ЛЕТИ СЮДА · Мост · 2,3 км»); если точка вне кадра —
+// стрелка у края обзорной области с той же подписью. Форма и цвет — по смыслу: куда лететь, где садиться, что поразить.
 // Здесь же прицельные марки (пушка, упреждение, кольцо захвата) и коллиматор вида из кабины.
 // Элементы DOM — из пула; стиль/текст меняются только при изменении округлённых значений.
 import * as THREE from 'three';
@@ -6,18 +7,23 @@ import { clamp } from '../core/util.js';
 
 const POOL = 24;
 const _v = new THREE.Vector3(), _f = new THREE.Vector3();
-const KINDS = { waypoint: 1, target: 1, friend: 1, airport: 1, ring: 1, bandit: 1 };
+// подпись «что это» для каждого вида маркера
+export const MARK_TAG = { waypoint: 'ЛЕТИ СЮДА', airport: 'ПОСАДКА', target: 'ЦЕЛЬ', fire: 'ПОЖАР', ring: 'ПРОЛЕТИ ЗДЕСЬ', friend: 'СВОЙ', bandit: '' };
+const KINDS = MARK_TAG;
+const fmtD = (dk) => (dk < 1000 ? dk * 10 + ' м' : dk < 1100 ? ((dk - 1000) / 10).toFixed(1).replace('.', ',') + ' км' : Math.round((dk - 1000) / 10) + ' км');
 
-export function createMarkers(G, layer, colli) {
+// onFirst(kind) — вид маркера впервые появился на экране (для одноразовой подсказки)
+export function createMarkers(G, layer, colli, onFirst) {
+  const shownKinds = {};
   const cam = G.camera;
   const items = [];
   for (let i = 0; i < POOL; i++) {
     const el = document.createElement('div');
     el.className = 'hud-mk';
     el.hidden = true;
-    el.innerHTML = '<div class="hud-mk-ico"></div><div class="hud-mk-txt"><b></b><i></i></div>';
+    el.innerHTML = '<div class="hud-mk-ico"></div><div class="hud-mk-txt"><span class="hud-mk-tag"></span><b></b><i></i></div>';
     layer.appendChild(el);
-    items.push({ el, ico: el.firstChild, lbl: el.querySelector('b'), dst: el.querySelector('i'), on: false, x: -1, y: -1, kind: '', label: null, dk: -1, off: -1, rot: 999, sc: -1, gx: NaN, gz: NaN, gy: 0 });
+    items.push({ el, ico: el.firstChild, tag: el.querySelector('.hud-mk-tag'), lbl: el.querySelector('b'), dst: el.querySelector('i'), on: false, x: -1, y: -1, kind: '', label: null, dk: -1, off: -1, rot: 999, sc: -1, gx: NaN, gz: NaN, gy: 0 });
   }
   const mkEl = (cls) => {
     const el = document.createElement('div');
@@ -42,7 +48,7 @@ export function createMarkers(G, layer, colli) {
   let colliOn = false, ppdLast = -1, ladKey = 1e9;
 
   let W = 1, H = 1, S = 1;
-  let inL = 60, inR = 60, inT = 70, inB = 130;
+  let inL = 60, inR = 60, inT = 70, inB = 130, inT0 = 70, topPx = 0;
 
   // мир → экран. Возвращает true, если точка перед камерой; результат в sx, sy; cxv, cyv — направление в осях камеры
   let sx = 0, sy = 0, cxv = 0, cyv = 0;
@@ -70,8 +76,9 @@ export function createMarkers(G, layer, colli) {
     const dx = m.x - ac.pos.x, dy = y - ac.pos.y, dz = m.z - ac.pos.z;
     const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
     const front = project(m.x, y, m.z);
-    const kind = KINDS[m.kind] ? m.kind : 'waypoint';
-    let off = !front || sx < 24 * S || sx > W - 24 * S || sy < 56 * S || sy > H - inB + 30 * S;
+    const kind = KINDS[m.kind] != null ? m.kind : 'waypoint';
+    // верх экрана занят карточкой задачи — точки под ней показываем стрелкой у края
+    let off = !front || sx < 24 * S || sx > W - 24 * S || sy < Math.max(56 * S, topPx) || sy > H - inB + 30 * S;
     let rot = 0, sc = 0;
     if (off) {
       if (kind === 'bandit' && dist > 5000) { put(it, false); return; }
@@ -89,7 +96,8 @@ export function createMarkers(G, layer, colli) {
     }
     if (dist < 25 && kind !== 'ring') { put(it, false); return; }
     put(it, true, sx, sy);
-    if (kind !== it.kind) { it.kind = kind; it.el.className = 'hud-mk hud-mk-' + kind + (it.off === 1 ? ' is-off' : ''); }
+    if (kind !== it.kind) { it.kind = kind; it.el.className = 'hud-mk hud-mk-' + kind + (it.off === 1 ? ' is-off' : ''); it.tag.textContent = KINDS[kind]; }
+    if (!shownKinds[kind]) { shownKinds[kind] = 1; if (onFirst) onFirst(kind); }
     const o = off ? 1 : 0;
     if (o !== it.off) { it.off = o; it.el.classList.toggle('is-off', off); it.rot = 999; it.sc = -1; it.ico.style.transform = ''; }
     if (off) { if (rot !== it.rot) { it.rot = rot; it.ico.style.transform = `rotate(${(rot / 30).toFixed(3)}rad)`; } }
@@ -99,15 +107,21 @@ export function createMarkers(G, layer, colli) {
     const dk = dist < 1000 ? Math.round(dist / 10) : 1000 + Math.round(dist / 100);
     if (dk !== it.dk) {
       it.dk = dk;
-      it.dst.textContent = dist < 1000 ? dk * 10 + ' м' : ((dk - 1000) / 10).toFixed(1) + ' км';
+      it.dst.textContent = fmtD(dk);
     }
   }
 
   return {
     resize(w, h, scale, portrait) {
       W = w; H = h; S = scale;
-      inL = inR = portrait ? 34 * S : Math.max(112 * S, w * 0.285); inT = (portrait ? 190 : 86) * S; inB = (portrait ? 0.32 * h / S + 140 : 158) * S;
+      inL = inR = portrait ? 34 * S : Math.max(112 * S, w * 0.285); inT0 = (portrait ? 190 : 86) * S; inB = (portrait ? 0.32 * h / S + 140 : 176) * S;
+      inT = Math.max(inT0, topPx + 18 * S);
       ppdLast = -1;
+    },
+    // нижний край карточки задачи (px от верха экрана): стрелки и подписи — ниже неё
+    setTop(px) {
+      topPx = px || 0;
+      inT = Math.max(inT0, topPx + 18 * S);
     },
     // list — маркеры задания, auto[0..nAuto) — автоматические (полоса, противники)
     update(ac, list, auto, nAuto) {

@@ -1,0 +1,70 @@
+/* Карточка задачи (ui/hud-guide.js): вверху слева, сразу за мини-картой и под шкалой курса — не закрывает самолёт
+   (он в центре), приборы (внизу) и кнопки (справа). Единица --u — из .hud (ui/hud.js). */
+:root {
+  --guide-bar-bg: rgba(244, 236, 216, 0.14);   /* дорожка индикатора прогресса */
+  --guide-btn-line: rgba(244, 236, 216, 0.4);  /* кромка второстепенной кнопки */
+}
+.hud-guide {
+  position: absolute; top: calc(var(--sa-t) + 52 * var(--u)); inset-inline-start: calc(var(--sa-l) + 100 * var(--u));
+  width: calc(384 * var(--u)); max-width: calc(100vw - var(--sa-l) - var(--sa-r) - 390 * var(--u)); direction: ltr;
+  box-sizing: border-box; pointer-events: auto;
+  background: var(--hud-panel); border: 1px solid var(--glass-line); border-left: calc(3 * var(--u)) solid var(--dawn);
+  border-radius: calc(9 * var(--u));
+  padding: 0 calc(4 * var(--u)) calc(5 * var(--u)) calc(10 * var(--u));
+  font-family: var(--f-body); color: var(--cream);
+}
+.hud-guide.is-new { animation: hud-flash 1.2s ease-out; }
+.hud-guide[data-kind="offer"] { border-left-color: var(--sky); }
+.hud-guide[data-kind="idle"] { width: auto; padding-bottom: 0; border-left-color: var(--sky); }
+
+/* заголовок: «3/5 БОЕВОЙ РАЗВОРОТ» + кнопка «–/?»; тап по строке — свернуть/развернуть */
+.hud-guide-head { display: flex; align-items: center; gap: calc(7 * var(--u)); min-height: calc(30 * var(--u)); cursor: pointer; }
+.hud-guide-n { font-family: var(--f-mono); font-size: calc(11 * var(--u)); font-weight: 600; color: var(--dawn-2); white-space: nowrap; }
+.hud-guide-title {
+  flex: 1; min-width: 0; font-family: var(--f-display); font-weight: 600; font-size: calc(13 * var(--u)); line-height: 1.15;
+  letter-spacing: 0.08em; text-transform: uppercase; padding: calc(3 * var(--u)) 0;
+}
+.hud-guide-mini { display: none; font-family: var(--f-mono); font-size: calc(10.5 * var(--u)); font-weight: 600; color: var(--dawn-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+.hud-guide-tog {
+  position: relative; flex: none; width: calc(28 * var(--u)); height: calc(28 * var(--u)); padding: 0; margin: 0;
+  border-radius: 50%; border: 1px solid var(--glass-line); background: var(--night-2);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  font-family: var(--f-display) !important; font-weight: 600; font-size: calc(15 * var(--u)) !important; color: var(--dawn-2) !important; line-height: 1;
+}
+.hud-guide-tog::after { content: ''; position: absolute; inset: calc(-8 * var(--u)); } /* цель касания не меньше 44 px */
+
+.hud-guide-how { font-size: calc(11.5 * var(--u)); line-height: 1.3; color: var(--cream); }
+.hud-guide-prog { display: flex; align-items: center; gap: calc(8 * var(--u)); margin-top: calc(4 * var(--u)); margin-right: calc(6 * var(--u)); }
+.hud-guide-bar { flex: 0 0 34%; height: calc(7 * var(--u)); border-radius: calc(4 * var(--u)); background: var(--guide-bar-bg); overflow: hidden; }
+.hud-guide-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--dawn), var(--dawn-2)); transform-origin: left center; transform: scaleX(0); transition: transform 0.25s ease-out; }
+.hud-guide.is-full .hud-guide-bar i { background: var(--ok); }
+.hud-guide-prog span { flex: 1; min-width: 0; font-family: var(--f-mono); font-size: calc(10.5 * var(--u)); font-weight: 600; color: var(--dawn-2); line-height: 1.25; }
+.hud-guide-hint { margin-top: calc(3 * var(--u)); font-size: calc(11.5 * var(--u)); font-weight: 600; color: var(--dawn-2); line-height: 1.25; }
+.hud-guide-note { margin-top: calc(4 * var(--u)); padding: calc(3 * var(--u)) calc(7 * var(--u)); border-radius: calc(6 * var(--u)); background: rgba(239, 79, 63, 0.18); border: 1px solid var(--signal); font-size: calc(11.5 * var(--u)); line-height: 1.28; }
+.hud-guide-note.is-good { background: rgba(111, 208, 140, 0.16); border-color: var(--ok); }
+.hud-guide-btns { display: flex; gap: calc(8 * var(--u)); margin-top: calc(6 * var(--u)); margin-right: calc(6 * var(--u)); }
+.hud-guide[data-kind="idle"] .hud-guide-btns { margin: calc(4 * var(--u)) 0 calc(4 * var(--u)); }
+.hud-guide[data-kind="idle"] .hud-guide-body { display: flex; align-items: center; }
+.hud-guide[data-kind="idle"] .hud-guide-head { display: none !important; }
+.hud-guide-btn {
+  flex: 1; min-height: 44px; padding: 0 calc(12 * var(--u)); border-radius: calc(22 * var(--u)); cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--guide-btn-line); background: var(--night-2);
+  font-family: var(--f-display) !important; font-size: calc(13 * var(--u)) !important; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.hud-guide-btn.is-main { background: var(--dawn); border-color: var(--dawn-2); color: var(--night) !important; }
+.hud-guide-tip {
+  margin: calc(5 * var(--u)) calc(6 * var(--u)) 0 0; padding: calc(4 * var(--u)) calc(8 * var(--u)); border-radius: calc(6 * var(--u));
+  background: rgba(87, 182, 217, 0.16); border: 1px solid var(--sky); font-size: calc(11.5 * var(--u)); line-height: 1.28;
+}
+.hud-guide-tip::before { content: 'ПОДСКАЗКА · '; font-family: var(--f-display); font-weight: 600; letter-spacing: 0.1em; color: var(--sky); }
+
+/* свёрнуто: одна строка — заголовок и прогресс текстом */
+.hud-guide.is-collapsed { padding-bottom: 0; }
+.hud-guide.is-collapsed .hud-guide-body { display: none !important; }
+.hud-guide.is-collapsed .hud-guide-mini { display: block; }
+.hud-guide.is-collapsed .hud-guide-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (orientation: portrait) {
+  .hud-guide { top: calc(var(--sa-t) + 150 * var(--u)); inset-inline-start: 3vw; width: 94vw; max-width: none; }
+  .hud-guide-bar { flex-basis: 28%; }
+}
