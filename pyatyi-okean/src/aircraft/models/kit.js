@@ -41,16 +41,17 @@ function normSec(s) {
   return { z: s.z, y: s.y ?? 0, w: s.w ?? 0, h: s.h ?? 0, hb: s.hb ?? s.h ?? 0, e, eb: s.eb ?? e, x: s.x || 0, pts: s.pts || null, rk: s.rk || 0 };
 }
 
-function ringPts(s, n, flat, x0) {
+// m — дробление каждой грани обвода на m (круглое остаётся круглым, а «пояса» k для окраски — прежними)
+function ringPts(s, n, flat, x0, m = 1) {
   const out = [];
   if (s.pts) {
-    const m = n / 2;
-    for (let k = 0; k <= m; k++) out.push([x0 + s.x + s.pts[k][0], s.pts[k][1], s.z]);
-    for (let k = m - 1; k >= 1; k--) out.push([x0 + s.x - s.pts[k][0], s.pts[k][1], s.z]);
+    const h = n / 2;
+    for (let k = 0; k <= h; k++) out.push([x0 + s.x + s.pts[k][0], s.pts[k][1], s.z]);
+    for (let k = h - 1; k >= 1; k--) out.push([x0 + s.x - s.pts[k][0], s.pts[k][1], s.z]);
     return out;
   }
-  for (let k = 0; k < n; k++) {
-    const th = ((k + (flat ? 0.5 : 0)) / n) * Math.PI * 2;
+  for (let K = 0; K < n * m; K++) {
+    const th = ((K / m + (flat ? 0.5 : 0)) / n) * Math.PI * 2;
     const sn = Math.sin(th), cs = Math.cos(th);
     const x = s.w * spow(sn, 2 / s.e);
     const y = cs >= 0 ? s.h * Math.pow(cs, 2 / s.e) : -s.hb * Math.pow(-cs, 2 / s.eb);
@@ -58,6 +59,33 @@ function ringPts(s, n, flat, x0) {
   }
   return out;
 }
+
+// наклоны монотонного кубического сплайна (Фритч–Карлсон): плавный обвод через сечения без «перехлёстов»
+function pchip(xs, ys) {
+  const n = xs.length, d = new Array(n).fill(0), h = [], dl = [];
+  for (let i = 0; i < n - 1; i++) { h[i] = xs[i + 1] - xs[i]; dl[i] = h[i] > 1e-9 ? (ys[i + 1] - ys[i]) / h[i] : 0; }
+  if (n < 3) { d[0] = d[n - 1] = dl[0] || 0; return d; }
+  for (let i = 1; i < n - 1; i++) {
+    if (h[i - 1] < 1e-9 || h[i] < 1e-9 || dl[i - 1] * dl[i] <= 0) continue;
+    const w1 = 2 * h[i] + h[i - 1], w2 = h[i] + 2 * h[i - 1];
+    d[i] = (w1 + w2) / (w1 / dl[i - 1] + w2 / dl[i]);
+  }
+  const end = (h0, h1, d0, d1) => {
+    if (h0 < 1e-9) return 0;
+    let v = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
+    if (Math.sign(v) !== Math.sign(d0)) v = 0;
+    else if (Math.sign(d0) !== Math.sign(d1) && Math.abs(v) > Math.abs(3 * d0)) v = 3 * d0;
+    return v;
+  };
+  d[0] = end(h[0], h[1], dl[0], dl[1]);
+  d[n - 1] = end(h[n - 2], h[n - 3], dl[n - 2], dl[n - 3]);
+  return d;
+}
+
+// углы сглаживания нормалей по умолчанию (градусы): грани с меньшим углом между собой сглаживаются, с большим — остаются острой кромкой
+const PART_SA = { tire: 60, hub: 5, prop: 20, propTip: 20, door: 20, strutS: 20, chuteA: 50, chuteB: 50, chuteIn: 50 };
+// каналы костей, чьи части не затеняют корпус при запекании объёма (убираются, крутятся, прячутся)
+const AO_SKIP = { gear: 1, prop: 1, disc: 1, chute: 1, brake: 1, spoil: 1 };
 
 export class Builder {
   constructor() {
@@ -68,7 +96,9 @@ export class Builder {
     this.curBone = 0;
     this.curPart = 'fus';
     this.anchors = { cockpit: null, engines: [], props: [], muzzles: [], hardpoints: [], wingtips: [], gearMain: [], gearNose: null };
+    this.sgN = 1; // группы сглаживания: грани разных групп не сглаживаются между собой (0 — общая группа лофтов)
   }
+  sg() { return this.sgN++; }
 
   // ---------- кости ----------
   // def: { pivot, axis, ch (канал анимации), max (рад на единицу канала), slide ([x,y,z] на единицу канала),

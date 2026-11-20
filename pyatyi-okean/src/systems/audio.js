@@ -15,7 +15,7 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const dampK = (rate, dt) => 1 - Math.exp(-rate * dt);
 // минимальный интервал между повторами одного звука, с
 const MIN_GAP = { ui_tick: 0.035, gun: 0.05, hit: 0.08, bump: 0.06, splash: 0.08, explosion: 0.04, touchdown: 0.12, radio: 0.15, gear_lock: 0.2, flap_lock: 0.2, thunder: 0.3 };
-const MAX_VOICES = 72;
+const MAX_VOICES = 120;   // элементарных голосов (один звук — 1–6 узлов-источников)
 const SPOOL = { piston: 2.2, turboprop: 1.1, jet: 0.55 };
 
 export function createAudio(G) {
@@ -170,13 +170,13 @@ export function createAudio(G) {
   function play(name, opts) {
     if (!ctx || !sfx) return false;
     name = String(name || '');
-    let rec = sfx.R[name];
-    if (!rec) { missed++; rec = sfx.R.ui_fallback; }
+    let rec = sfx.R[name], known = !!rec;
+    if (!known) { missed++; rec = sfx.R.ui_fallback; }
     const now = ctx.currentTime;
     const gap = MIN_GAP[name] == null ? 0.025 : MIN_GAP[name];
     if (last[name] != null && now - last[name] < gap) return false;
-    const ui = isUi(name);
-    if (voices > MAX_VOICES && !ui) return false;
+    const ui = !known || isUi(name);
+    if (voices > (ui ? MAX_VOICES * 2 : MAX_VOICES)) return false;
     if (S.hidden || (!ui && vol.sound <= 0)) return false;
     last[name] = now;
     const o = opts || {};
@@ -349,7 +349,7 @@ export function createAudio(G) {
       const agl = p.agl == null ? 999 : p.agl, vs = p.vs || 0, spec = p.spec;
       const landingCfg = p.gearPos > 0.9 && (p.flapsPos || 0) > 0.3;
       if (p.stalled || (p.stallWarn || 0) > 0.55) warn = 'warn_stall';
-      else if (agl < 280 && vs < -4 && agl / -vs < 7 && !(landingCfg && vs > -7) && !(agl < 25 && vs > -5)) warn = 'warn_terrain';
+      else if (agl < 600 && vs < -4 && agl / -vs < 7 && !(landingCfg && vs > -7) && !(agl < 25 && vs > -5)) warn = 'warn_terrain';
       else if (spec.retract && p.gearPos < 0.5 && agl < 150 && vs < -1.5 && (thr < 0.45 || ias < (spec.vApproach || spec.vStall * 1.4 || 40) * 1.25)) {
         const gnd = G.world && G.world.groundAt ? G.world.groundAt(p.pos.x, p.pos.z) : null;
         if (!(spec.amphibian && gnd && gnd.surface === 'water')) warn = 'warn_gear';

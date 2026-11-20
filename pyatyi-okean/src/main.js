@@ -33,7 +33,9 @@ function boot() {
     // прокрутить симуляцию без ожидания реального времени (для тестов)
     const n = Math.round(seconds / FIXED_DT);
     for (let i = 0; i < n && G.mode === 'flight'; i++) G.step(FIXED_DT);
-    G.frameUpdate(Math.min(seconds, 0.05), 1);
+    // эффектам и камере даём до 2 с прокрученного времени кадрами по 0.05 с — иначе следы и дым на скриншотах «на один кадр»
+    const fn = Math.max(1, Math.min(40, Math.round(seconds / 0.05)));
+    for (let i = 0; i < fn; i++) G.frameUpdate(0.05, i === fn - 1 ? 1 : 0.05);
     if (render) G.render();
     return G.debug.info();
   };

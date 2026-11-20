@@ -217,12 +217,13 @@ export function createFx(G) {
         }
       }
       if (f.smoke) {
-        f._s += dt * 2.6 * lod * (0.5 + 0.5 * k) * Q.density;
+        // плотный столб: частые клубы поменьше (редкие крупные выглядели отдельными «плитами»)
+        f._s += dt * 4.5 * lod * (0.5 + 0.5 * k) * Q.density;
         while (f._s >= 1) {
           f._s -= 1;
-          const g = 0.022 + rnd() * 0.03, rise = (3 + rnd() * 1.5) * q, far = 1 / Math.sqrt(lod);
-          P.spawn(p.x + rs() * 0.5 * s, p.y + (1 + rnd()) * s, p.z + rs() * 0.5 * s, rs() * 0.7, rise, rs() * 0.7, (7 + rnd() * 4) * Math.min(2.2, q),
-            1.7 * s * far, (6 + rnd() * 3) * s * far, g, g, g * 1.15, 0.78 * (0.5 + 0.5 * Math.min(1, k)), 0.16, rise * 0.16, 0, 0.1, -1e6);
+          const g = 0.04 + rnd() * 0.045, rise = (3 + rnd() * 1.5) * q, far = 1 / Math.sqrt(lod);
+          P.spawn(p.x + rs() * 0.5 * s, p.y + (0.8 + rnd()) * s, p.z + rs() * 0.5 * s, rs() * 0.7, rise, rs() * 0.7, (7 + rnd() * 4) * Math.min(2.2, q),
+            1.3 * s * far, (4.2 + rnd() * 2.2) * s * far, g, g, g * 1.12, 0.72 * (0.5 + 0.5 * Math.min(1, k)), 0.16, rise * 0.16, 0, 0.1, -1e6);
         }
       }
     }
@@ -424,17 +425,18 @@ export function createFx(G) {
     // --- повреждения: дым (< 50) и огонь (< 25)
     const hp = ac.hp == null ? 100 : ac.hp;
     if (hp < 50 && d2 < 6.4e7) {
-      const dk = clamp((50 - hp) / 30, 0.25, 1), sc = st.scale;
+      // свой самолёт дымит скромнее: камера погони смотрит сквозь шлейф
+      const dk = clamp((50 - hp) / 30, 0.25, 1), me = ac.isPlayer ? 0.6 : 1, sc = st.scale * (ac.isPlayer ? 0.7 : 1);
       if (!st.dmgTrail) st.dmgTrail = own(ac, 0.035, 0.035, 0.04, 0.5, 1.2 * sc, 2.6 * sc, 4.5, 0.06, 0.9);
       local(ac, st.groups[0].p);
-      if (st.dmgTrail) { st.dmgTrail.setAlpha(0.3 + 0.4 * dk); st.dmgTrail.pushXYZ(_v.x, _v.y, _v.z); }
+      if (st.dmgTrail) { st.dmgTrail.setAlpha((0.3 + 0.4 * dk) * me); st.dmgTrail.pushXYZ(_v.x, _v.y, _v.z); }
       if (d2 < 9e6) {
         st.dmgAcc += dt * (6 + 8 * dk) * Q.density;
         while (st.dmgAcc >= 1) {
           st.dmgAcc -= 1;
           const g = 0.03 + rnd() * 0.05 * (1 - dk * 0.6);
           P.spawn(_v.x + rs() * 0.4, _v.y + rs() * 0.4, _v.z + rs() * 0.4, v.x * 0.35 + rs() * 1.5, v.y * 0.35 + rs() * 1.5, v.z * 0.35 + rs() * 1.5,
-            1.4 + rnd() * 1.2, 1.1 * sc, 4.2 * sc, g, g, g * 1.1, 0.7, 2.2, 2.5, 0, 0.15, -1e6);
+            1.4 + rnd() * 1.2, 1.1 * sc, 4.2 * sc, g, g, g * 1.1, 0.7 * me, 2.2, 2.5, 0, 0.15, -1e6);
         }
         if (hp < 25) {
           st.fireAcc += dt * 22 * Q.density;
@@ -468,11 +470,13 @@ export function createFx(G) {
             _x.set(1, 0, 0).applyQuaternion(ac.quat); _x.y = 0;
             const hx = p.x - (v.x / gs) * spec.length * 0.05, hz = p.z - (v.z / gs) * spec.length * 0.05, wy = p.y - (spec.hullHeight || 1) - 0.2;
             // веер брызг от скулы
-            P.spawn(hx + _x.x * side * 1.2, wy + 0.3, hz + _x.z * side * 1.2, v.x * 0.45 + _x.x * side * (4 + rnd() * 5) * k, (3 + rnd() * 5) * k, v.z * 0.45 + _x.z * side * (4 + rnd() * 5) * k,
-              0.8 + rnd() * 0.7, 1.1 * sc, 3.4 * sc, 0.85, 0.92, 0.98, 0.75, 0.9, -9.8, 0, 0, wy);
+            // (веер — в стороны и назад, умеренного размера: не закрывать самолёт от камеры погони)
+            const sw = (5 + rnd() * 6) * k;
+            P.spawn(hx + _x.x * side * 1.2, wy + 0.3, hz + _x.z * side * 1.2, v.x * 0.3 + _x.x * side * sw, (2.5 + rnd() * 4) * k, v.z * 0.3 + _x.z * side * sw,
+              0.7 + rnd() * 0.5, 0.6 * sc, 2 * sc, 0.85, 0.92, 0.98, 0.6, 1.1, -9.8, 0, 0, wy);
             // пенный кильватер
-            P.spawn(p.x - (v.x / gs) * spec.length * 0.35 + rs(), wy + 0.15, p.z - (v.z / gs) * spec.length * 0.35 + rs(), _x.x * side * 1.5, 0, _x.z * side * 1.5,
-              2.8 + rnd() * 1.5, 1.6 * sc, 4.5 * sc, 0.9, 0.95, 1, 0.34, 1.2, 0, 0, 0, wy);
+            P.spawn(p.x - (v.x / gs) * spec.length * 0.35 + rs(), wy + 0.1, p.z - (v.z / gs) * spec.length * 0.35 + rs(), _x.x * side * 1.5, 0, _x.z * side * 1.5,
+              2.4 + rnd() * 1.2, 1 * sc, 2.8 * sc, 0.9, 0.95, 1, 0.3, 1.2, 0, 0, 0, wy);
           }
         }
       } else {

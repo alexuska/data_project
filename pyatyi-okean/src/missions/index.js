@@ -1,29 +1,57 @@
-// МИССИИ (заглушка v0 — заменяется агентом «Миссии»). Контракт — в ARCHITECTURE.md.
+// ЗАДАНИЯ. Контракт — в ARCHITECTURE.md (раздел «Миссии» и «Описание задания»).
+// Сценарии — в training.js, civil.js, rescue.js, combat.js; движок шагов — engine.js; помощники — lib.js.
+import { createRunner } from './engine.js';
+import { firstFlight, dniesterCircle, aeroSchool } from './training.js';
+import * as civil from './civil.js';
+import * as special from './special.js';
+import * as combat from './combat.js';
+
+const ALL = [
+  firstFlight, dniesterCircle, aeroSchool,
+  civil.mailMayak, civil.moscowSnow, civil.parisEvening,
+  special.fireResort, special.chkalov,
+  combat.rangeL39, combat.intercept,
+].filter(Boolean);
+
 export function createMissions(G) {
-  const list = [
-    { id: 'first_flight', title: 'Первый вылет', category: 'training', plane: 'yak52', brief: 'Взлетите с полосы 09 аэропорта Тирасполь и наберите 300 метров.', reward: { money: 500, xp: 100 } },
-  ];
+  const byMission = Object.fromEntries(ALL.map((x) => [x.def.id, x]));
+  const list = ALL.map((x) => x.def);
+  let runner = null;
+
+  function pickPlane(def) {
+    if (def.plane) return def.plane;
+    const mp = G.career && G.career.missionPlanes ? G.career.missionPlanes(def.id) : null;
+    if (mp && mp.pick) return mp.pick;
+    return (def.planes && def.planes[0]) || 'yak52';
+  }
+
   const missions = {
     list,
-    byId: Object.fromEntries(list.map((m) => [m.id, m])),
+    byId: Object.fromEntries(list.map((d) => [d.id, d])),
     active: null,
-    // параметры полёта для миссии: то, что передаётся в G.startFlight (planeId, airportId, air, timeOfDay, weather)
-    flightParams(id) { return { planeId: 'yak52', airportId: 'yasny' }; },
-    start(id) {
-      const def = missions.byId[id];
-      if (!def) return;
-      missions.active = { def, t: 0 };
-      G.hud.setObjective('Взлетите и наберите 300 м');
+    // параметры полёта для G.startFlight: planeId, airportId/runway/end или air, timeOfDay, weather
+    flightParams(id) {
+      const mi = byMission[id];
+      if (!mi) return {};
+      const s = mi.session ? mi.session(G, G.world) : {};
+      return { planeId: pickPlane(mi.def), ...s };
     },
-    stop() { missions.active = null; },
+    start(id) {
+      missions.stop();
+      const mi = byMission[id];
+      if (!mi) return;
+      runner = createRunner(G, mi);
+      missions.active = runner;
+      runner.start();
+    },
+    stop() {
+      if (runner) runner.stop();
+      runner = null;
+      missions.active = null;
+      G.hud?.setAction?.(null);
+    },
     update(dt) {
-      const a = missions.active;
-      if (!a || !G.player) return;
-      a.t += dt;
-      if (G.player.agl > 300) {
-        missions.active = null;
-        G.endFlight({ reason: 'mission_complete', success: true, title: 'Задание выполнено', text: a.def.title, missionId: a.def.id, stars: 3, reward: a.def.reward });
-      }
+      if (runner) runner.update(dt);
     },
   };
   return missions;

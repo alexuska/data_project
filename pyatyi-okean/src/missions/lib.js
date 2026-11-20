@@ -12,15 +12,17 @@ export const plural = (n, one, few, many) => {
 };
 
 // ---------- радио ----------
-export const TOWER = {
-  yasny: 'Тирасполь-Вышка', kamenny: 'Каменный-Старт', gavan: 'Бендеры-Вышка', gnezdo: 'Гнездо-Радио', mayak: 'Маяк-Радио',
-  polyarny: 'Москва-Вышка', yuzhny: 'Париж-Вышка', carrier: 'Буревестник',
-};
-const CALLSIGN = {
-  yak52: 'Учебный 52', an2: 'Борт 02', l410: 'Борт 410', yak40: 'Борт 40', tu154: 'Борт 154', il76: 'Борт 76', be200: 'Спасатель 200',
-  l39: 'Альбатрос 39', mig21: 'Сокол 21', su25: 'Грач 25', mig29: 'Сокол 29', su27: 'Сапсан 27',
-};
-export const callsign = (specId) => CALLSIGN[specId] || 'Борт 01';
+// Позывной диспетчера строится из названия аэродрома (названия берём из мира, не константами):
+// «Тирасполь-Вышка», военный — «Каменный-Старт», площадка — «Маяк-Радио», корабль — «Буревестник».
+export function towerName(world, id) {
+  const a = world.airportById[id];
+  if (!a) return 'Вышка';
+  const words = a.name.replace(/[«»"]/g, '').split(/\s+/);
+  if (a.kind === 'carrier') return words[words.length - 1];
+  if (a.kind === 'strip') return words[words.length - 1] + '-Радио';
+  if (a.kind === 'military') return words[0] + '-Старт';
+  return a.name + '-Вышка';
+}
 // номер полосы по курсу: 90° -> «09»
 export const rwNum = (heading) => String(Math.round((((heading / DEG) % 360) + 360) % 360 / 10) || 36).padStart(2, '0');
 // «ветер 240 градусов 5» (world.wind — куда дует)

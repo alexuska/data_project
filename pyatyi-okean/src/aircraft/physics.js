@@ -446,7 +446,10 @@ export function stepAircraft(ac, env, dt) {
     const aN = clamp(aOfN(nHold), aLo, Math.min(aHi, aStall * 0.9));
     let aCmd = sP >= 0 ? aN + sP * (aHi - aN) : aN + sP * (aN - aLo);
     ctl.nN = nOfA(aN); ctl.nHi = nOfA(aHi); ctl.nLo = nOfA(aLo);
-    if (assist && _vaHat.y > 0.05) {
+    // у пилотажных и истребителей (без bankLimit/pitchLimit) ручка полностью на себя при полном газе — это петля:
+    // ограничитель угла атаки остаётся, а «запас энергии» не мешает перетянуть самолёт через верх
+    const aeroPull = !spec.bankLimit && !liner && sP > 0.9 && ac.throttle > 0.8;
+    if (assist && _vaHat.y > 0.05 && !aeroPull) {
       // запас энергии в наборе: чем круче лезем и чем ближе скорость к сваливанию, тем меньше даём тянуть —
       // самолёт сам переваливается на нос раньше, чем «повиснет»
       const sg = _vaHat.y;
@@ -504,7 +507,10 @@ export function stepAircraft(ac, env, dt) {
       if (Math.abs(sR) < 0.05) {
         const ab = Math.abs(ac.bank);
         if (ab < 0.14) pr -= ac.bank * 0.9; // малый крен убирается сам
-        else if (ab > 0.8) pr -= Math.sign(ac.bank) * Math.min((ab - 0.8) * 0.7, 0.5 * rollMax); // брошенный глубокий крен плавно возвращается к 45°
+        // брошенный глубокий крен плавно возвращается к 45°. У пилотажных и истребителей (без bankLimit) — только если
+        // и ручка по тангажу отпущена (в петле/иммельмане не мешаем), а вверх ногами крыло держится в горизонте «на спине»
+        else if (ab > 0.8 && (spec.bankLimit || (Math.abs(sP) < 0.3 && ab < 2.1))) pr -= Math.sign(ac.bank) * Math.min((ab - 0.8) * 0.7, 0.5 * rollMax);
+        else if (ab >= 2.1 && !spec.bankLimit && Math.abs(sP) < 0.3) pr += Math.sign(ac.bank) * Math.min((Math.PI - ab) * 0.9, 0.3 * rollMax);
       }
     }
     let wRoll = -pr + 0.6 * beta * effQ + stallRoll + gRoll;
