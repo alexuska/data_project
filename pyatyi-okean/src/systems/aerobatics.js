@@ -154,7 +154,7 @@ export class TrickDetector {
     }
 
     // ---------- выход из горизонта: петля, иммельман, переворот, боевой разворот, поворот на горке ----------
-    const level = trkOk && uy > 0.8 && Math.abs(fy) < 0.34 && Math.abs(gamma) < 0.35;
+    const level = trkOk && uy > 0.8 && Math.abs(fy) < 0.34 && Math.abs(gamma) < 0.35 && ias > 0.8 * vS; // зависание на горке — не горизонт
     if (level) {
       if (this.exc) {
         this.exc = false;
@@ -174,14 +174,14 @@ export class TrickDetector {
       if (this.hhPhase === 1) {
         if (ias < this.hhMinIas) this.hhMinIas = ias;
         if (Math.abs(fy) < 0.45 && uy < -0.6) this.hhBack = true;
-        if (fy < -0.7) {
+        if (fy < -0.3) {
           this.hhPhase = 2;
-          const slow = this.hhMinIas < 1.6 * vS, verySlow = this.hhMinIas < 0.85 * vS;
-          if (this.refOk && this.t - this.hhT < 15 && ((slow && !this.hhBack) || verySlow)) {
+          const slow = this.hhMinIas < 1.0 * vS, verySlow = this.hhMinIas < 0.7 * vS;
+          if (this.refOk && this.t - this.hhT < 40 && ((slow && !this.hhBack) || verySlow)) {
             this.eUsed = true;
             this.emit('hammerhead');
           }
-        } else if (this.t - this.hhT > 15) this.hhPhase = 2;
+        } else if (this.t - this.hhT > 40) this.hhPhase = 2; // у истребителей горка долгая
       }
     }
 
@@ -203,7 +203,7 @@ export class TrickDetector {
     }
 
     // ---------- перевёрнутый полёт > 4 с ----------
-    if (uy < -0.5 && Math.abs(fy) < 0.6) {
+    if (uy < -0.5 && Math.abs(fy) < 0.6 && Math.abs(q) < 0.22) { // |q| мал: не верх петли, а полёт «на спине»
       this.invT += dt; this.invGap = 0;
       if (!this.invDone && this.invT >= 4) { this.invDone = true; this.emit('inverted'); }
     } else {
@@ -356,7 +356,7 @@ export function createAerobatics(G) {
     if (p && p.isPlayer) det.step(p, dt);
     if (showT > 0) {
       showT -= dt;
-      if (showT <= 0.35 && !plate.classList.contains('aero-out')) plate.classList.add('aero-out');
+      if (showT <= 0.35 && !plate.classList.contains('aero-out')) { plate.classList.remove('aero-in'); plate.classList.add('aero-out'); }
       if (showT <= 0) hidePlate();
     }
   }

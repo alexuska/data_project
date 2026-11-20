@@ -7,7 +7,7 @@ const D = Math.PI / 180;
 export default {
   id: 'mig21', cgZ: 7.35,
   liveries: [
-    { id: 'silver', name: 'Серебристая (неокрашенный металл)', paint: plain({ base: '#b9c0c6', radome: '#3f7a4c',
+    { id: 'silver', name: 'Серебристая (неокрашенный металл)', paint: plain({ base: '#b9c0c6', radome: '#3f7a4c', finish: 'metal',
       extra: (c) => (c.part === 'fin' && c.sp > 0.86 ? '#3f7a4c' : c.part === 'fus' && c.zn < 0.055 ? '#9aa1a7' : null) }) },
     { id: 'camo', name: 'Зелёно-коричневый камуфляж', paint: camo({ cols: ['#5d6d3c', '#8a7347', '#3f5432'], under: '#9fc4dc', scale: 1.5, radome: '#3f7a4c' }) },
     { id: 'grey', name: 'Серо-голубой камуфляж', paint: camo({ cols: ['#8795a0', '#687a8a', '#a3b0b8'], under: '#a9c7da', scale: 1.5, radome: '#3f7a4c', seed: 2 }) },

@@ -42,7 +42,9 @@ function shapeFor(spec) {
   let r2 = 0;
   for (const arr of [sh.pos, sh.opos]) for (let i = 0; i < arr.length; i += 3) r2 = Math.max(r2, arr[i] * arr[i] + arr[i + 1] * arr[i + 1] + arr[i + 2] * arr[i + 2]);
   sh.sphere = new THREE.Sphere(new THREE.Vector3(), Math.sqrt(r2) * 1.1 + 1);
+  sh.jet = spec.engine === 'jet';
   sh.aPos = new THREE.BufferAttribute(sh.pos, 3);
+  sh.aNrm = new THREE.BufferAttribute(sh.nrm, 3);
   sh.aSkinI = new THREE.BufferAttribute(sh.skinIndex, 4);
   sh.aSkinW = new THREE.BufferAttribute(sh.skinWeight, 4, true);
   sh.ogeo = null;
@@ -73,9 +75,12 @@ function geoFor(spec, def, sh, liv, enemy) {
   const scheme = enemy ? (def.enemyPaint || enemyScheme || (enemyScheme = aggressor())) : liv.paint;
   g = new THREE.BufferGeometry();
   g.setAttribute('position', sh.aPos);
+  g.setAttribute('normal', sh.aNrm);
   g.setAttribute('skinIndex', sh.aSkinI);
   g.setAttribute('skinWeight', sh.aSkinW);
-  g.setAttribute('color', new THREE.BufferAttribute(paintShape(sh, scheme, sh.dims), 3));
+  const paint = paintShape(sh, scheme, sh.dims);
+  g.setAttribute('color', new THREE.BufferAttribute(paint.col, 3));
+  g.setAttribute('aSurf', new THREE.BufferAttribute(paint.surf, 4, true));
   g.boundingSphere = sh.sphere;
   g.userData.shared = true;
   geoCache[key] = g;
@@ -117,8 +122,9 @@ export function animateModel(model, ac, dt) {
   animate(model, ac, dt);
 }
 
-// Общие материалы всех моделей: { bodyMat (Lambert, цвета вершин, гранёный), overlayMat (огни, пламя, диски винтов) }.
-// Нужны миру, если он патчит материалы своей дымкой: patchMaterial(modelMaterials().bodyMat) до первого кадра.
+// Общие материалы всех моделей: { bodyMat (Standard, гладкие нормали, цвета вершин + атрибут отделки aSurf,
+// процедурное отражение неба мира), overlayMat (огни, пламя, диски винтов). bodyMat уже использует onBeforeCompile —
+// патчить его дымкой мира (patchMaterial) нельзя: он сам берёт цвета неба/дымки из world/env.js, туман — scene.fog.
 export function modelMaterials() {
   return materials();
 }

@@ -4,15 +4,84 @@
 // а просто матрицы: animate пересчитывает только те, чьё входное значение изменилось.
 import * as THREE from 'three';
 import { G } from '../../core/game.js';
+import { U as WU, FOG_PARS } from '../../world/env.js';
 
 const IDENT = new THREE.Matrix4();
 const _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3();
 const NOCTL = { pitch: 0, roll: 0, yaw: 0, throttle: 0 };
 
 let bodyMat = null, overlayMat = null;
+
+// Отражение неба: аналитический «купол» из тех же цветов, что рисует небо мира (зенит, дымка к солнцу и от него),
+// снизу — земля в дымке. Размытие по шероховатости. Никаких текстур и PMREM — дёшево для телефона, меняется с временем суток.
+const EU = {
+  uEnvGnd: { value: new THREE.Color(0.08, 0.1, 0.07) },
+  uEnvK: { value: 1 },
+};
+const ENV_GLSL = /* glsl */ `
+uniform vec3 uZenith;
+uniform vec3 uEnvGnd;
+uniform float uEnvK;
+varying vec4 vSurf;
+${FOG_PARS}
+vec3 mEnv(vec3 d, float r) {
+  float y = d.y;
+  vec3 hz = wfogColor(normalize(vec3(d.x, 0.0, d.z) + vec3(0.0, 0.0, 1e-4)));
+  vec3 sky = mix(hz, uZenith, pow(clamp(y, 0.0, 1.0), 0.5));
+  vec3 gnd = mix(hz * 0.8, uEnvGnd, smoothstep(0.0, 0.3, -y));
+  float w = 0.03 + r * 0.55;
+  vec3 c = mix(gnd, sky, smoothstep(-w, w * 0.6, y));
+  vec3 avg = mix(uEnvGnd, mix(hz, uZenith, 0.45), 0.5 + 0.5 * y);
+  return mix(c, avg, r * r * 0.8) * uEnvK;
+}
+`;
+
+function patchBody(mat) {
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uZenith = WU.uZenith; sh.uniforms.uFogA = WU.uFogA; sh.uniforms.uFogSun = WU.uFogSun;
+    sh.uniforms.uSunDir = WU.uSunDir; sh.uniforms.uFogP = WU.uFogP;
+    sh.uniforms.uEnvGnd = EU.uEnvGnd; sh.uniforms.uEnvK = EU.uEnvK;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec4 aSurf;\nvarying vec4 vSurf;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSurf = aSurf;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\n' + ENV_GLSL)
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = roughness * vSurf.x;')
+      .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = metalness * vSurf.y;')
+      // стекло: сильнее отражает (F0 ≈ 0.1 вместо 0.04 — «покрытие»), остальное — как у краски
+      .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\nmaterial.specularColor = mix(material.specularColor, vec3(0.1), vSurf.z);')
+      .replace('#include <lights_fragment_maps>', `#include <lights_fragment_maps>
+{
+  float occ = vSurf.w;
+  irradiance *= mix(0.35, 1.0, occ);
+  vec3 rv = reflect(-geometryViewDir, geometryNormal);
+  rv = normalize(mix(rv, geometryNormal, material.roughness * material.roughness));
+  rv = inverseTransformDirection(rv, viewMatrix);
+  radiance += mEnv(rv, material.roughness) * occ * occ * (1.0 + vSurf.z * 0.6);
+}`);
+  };
+  mat.customProgramCacheKey = () => 'po-body-1';
+  return mat;
+}
+
+// раз в кадр: цвет «земли» в отражениях из освещения мира
+let envFrame = -1;
+const _gc = new THREE.Color();
+function refreshEnv(renderer) {
+  const f = renderer.info.render.frame;
+  if (f === envFrame) return;
+  envFrame = f;
+  const e = G && G.world && G.world.env;
+  if (!e) return;
+  // земля в отражении: тёмная зелень/охра, освещённая так же, как мир, и подёрнутая дымкой
+  const lit = Math.min(1.2, (e.sunIntensity || 0) * Math.max(0, e.lightDir ? e.lightDir.y : 0.5) * 0.11 + (e.ambientIntensity || 0) * 0.07);
+  _gc.setRGB(0.42 * lit, 0.5 * lit, 0.34 * lit);
+  EU.uEnvGnd.value.copy(_gc).lerp(e.fogColor, 0.25 * (1 - (e.night || 0)));
+}
+
 export function materials() {
   if (!bodyMat) {
-    bodyMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    bodyMat = patchBody(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 1 }));
     overlayMat = new THREE.MeshBasicMaterial({
       vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false,
       blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
@@ -48,6 +117,7 @@ export function createInstance(shape, geo, ogeo, info) {
   };
   const body = mk(geo, bm);
   body.name = 'body';
+  body.onBeforeRender = refreshEnv;
   pose.add(body);
   let overlay = null;
   if (ogeo) {

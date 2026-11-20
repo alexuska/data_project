@@ -59,6 +59,66 @@ body {
   #ui * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
+/* src/ui/aerobatics.css */
+/* Пилотаж: плашка выполненной фигуры. Под строкой цели/радио, над самолётом; приборы внизу не перекрывает. */
+:root {
+  --aero-glow: rgba(255, 154, 61, 0.45);    /* рассветное свечение плашки */
+  --aero-panel: rgba(11, 22, 38, 0.8);       /* плотное стекло под крупным текстом */
+  --aero-shadow: rgba(0, 0, 0, 0.6);
+}
+.aero {
+  /* своя единица масштаба: 1px на телефоне 844×390, крупнее на планшете */
+  --au: clamp(0.85px, min(calc(100vw / 844), calc(100vh / 390)), 1.5px);
+}
+.aero-plate {
+  position: absolute; left: 50%; top: calc(var(--sa-t) + 64 * var(--au));
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center;
+  min-width: calc(220 * var(--au)); max-width: 86vw; box-sizing: border-box;
+  padding: calc(6 * var(--au)) calc(22 * var(--au)) calc(7 * var(--au));
+  background: linear-gradient(180deg, var(--aero-panel), var(--glass));
+  border: 1px solid var(--glass-line); border-top: calc(3 * var(--au)) solid var(--dawn);
+  border-radius: calc(12 * var(--au));
+  box-shadow: 0 calc(4 * var(--au)) calc(18 * var(--au)) var(--aero-shadow), 0 0 calc(26 * var(--au)) var(--aero-glow);
+  color: var(--cream); text-align: center; white-space: nowrap;
+}
+.aero-plate[hidden], .aero-combo[hidden] { display: none; }
+.aero-name {
+  font-family: var(--f-display); font-weight: 600; text-transform: uppercase;
+  font-size: calc(25 * var(--au)); line-height: 1.1; letter-spacing: 0.14em;
+  text-shadow: 0 1px 3px var(--aero-shadow);
+}
+.aero-pts {
+  font-family: var(--f-mono); font-weight: 700; font-size: calc(19 * var(--au)); line-height: 1.15;
+  color: var(--dawn-2); letter-spacing: 0.04em;
+}
+.aero-combo {
+  margin-top: calc(3 * var(--au)); padding: calc(1 * var(--au)) calc(10 * var(--au));
+  border-radius: calc(9 * var(--au)); background: var(--dawn); color: var(--night);
+  font-family: var(--f-display); font-weight: 700; text-transform: uppercase;
+  font-size: calc(12 * var(--au)); letter-spacing: 0.16em;
+}
+.aero-plate.aero-is-combo { border-top-color: var(--dawn-2); }
+.aero-plate.aero-is-combo .aero-pts { color: var(--dawn); }
+
+.aero-plate.aero-in { animation: aero-in 0.42s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.aero-plate.aero-in .aero-pts { animation: aero-pop 0.6s ease-out 0.12s both; }
+.aero-plate.aero-out { opacity: 0; transform: translateX(-50%) translateY(calc(-8 * var(--au))); transition: opacity 0.3s ease-in, transform 0.3s ease-in; }
+@keyframes aero-in {
+  from { opacity: 0; transform: translateX(-50%) scale(0.6); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+@keyframes aero-pop {
+  0% { opacity: 0; transform: scale(1.6); }
+  60% { opacity: 1; transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* портрет: верх HUD сдвинут вниз — плашку тоже */
+@media (orientation: portrait) {
+  .aero-plate { top: calc(var(--sa-t) + 22%); }
+}
+
 /* src/ui/hud.css */
 /* HUD полёта. Единица --u = 1px × масштаб интерфейса (--hs ставит ui/hud.js). */
 :root {

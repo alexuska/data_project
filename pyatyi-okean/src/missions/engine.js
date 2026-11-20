@@ -207,14 +207,14 @@ export function createRunner(G, mission) {
 export const S = {
   // взлёт: шаг выполнен, когда самолёт уверенно в воздухе
   takeoff(o = {}) {
-    return { id: o.id || 'takeoff', text: o.text || 'Взлетайте', markers: o.markers || [], enter: o.enter, on: o.on,
+    return { kind: 'takeoff', id: o.id || 'takeoff', text: o.text || 'Взлетайте', markers: o.markers || [], enter: o.enter, on: o.on,
       update: (m, dt) => { if (o.update) o.update(m, dt); return !m.ac.onGround && m.ac.agl > (o.agl || 10); } };
   },
   // долететь до точки: { x, z, y?, radius, label, kind, minAlt?, maxAlt? (над морем), altFrom?, altHint? }
   reach(o) {
     const mk = [{ x: o.x, y: o.y, z: o.z, label: o.label || '', kind: o.kind || 'waypoint', radius: o.ringR }];
     return {
-      id: o.id, text: o.text, markers: o.markers || mk, enter: o.enter, exit: o.exit, on: o.on,
+      kind: 'reach', pt: { x: o.x, y: o.y, z: o.z, minAlt: o.minAlt, maxAlt: o.maxAlt }, id: o.id, text: o.text, markers: o.markers || mk, enter: o.enter, exit: o.exit, on: o.on,
       update(m, dt) {
         if (o.update && o.update(m, dt)) return true;
         const ac = m.ac;
@@ -234,7 +234,7 @@ export const S = {
     let far = null;
     const none = [];
     return {
-      id: o.id || 'land', text: o.text || ((m) => `Посадка: ${m.name(apId)}`),
+      kind: 'land', ap: apId, id: o.id || 'land', text: o.text || ((m) => `Посадка: ${m.name(apId)}`),
       enter(m) {
         const ap = m.ap(apId);
         far = [{ x: ap.x, y: ap.elevation + 40, z: ap.z, kind: 'airport', label: ap.name }];

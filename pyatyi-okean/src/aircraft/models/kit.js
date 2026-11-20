@@ -87,6 +87,29 @@ const PART_SA = { tire: 60, hub: 5, prop: 20, propTip: 20, door: 20, strutS: 20,
 // каналы костей, чьи части не затеняют корпус при запекании объёма (убираются, крутятся, прячутся)
 const AO_SKIP = { gear: 1, prop: 1, disc: 1, chute: 1, brake: 1, spoil: 1 };
 
+// ближайшая к (px,py,pz) точка треугольника t (неиндексированный массив P): out = [x, y, z, d², u, w] (барицентры при B и C)
+function closestOnTri(P, t, px, py, pz, out) {
+  const i = t * 9;
+  const ax = P[i], ay = P[i + 1], az = P[i + 2];
+  const abx = P[i + 3] - ax, aby = P[i + 4] - ay, abz = P[i + 5] - az, acx = P[i + 6] - ax, acy = P[i + 7] - ay, acz = P[i + 8] - az;
+  const apx = px - ax, apy = py - ay, apz = pz - az;
+  const d1 = abx * apx + aby * apy + abz * apz, d3a = acx * apx + acy * apy + acz * apz;
+  let u, w;
+  const aa = abx * abx + aby * aby + abz * abz, bb = acx * acx + acy * acy + acz * acz, ab = abx * acx + aby * acy + abz * acz;
+  const den = aa * bb - ab * ab;
+  if (den < 1e-14) { u = 0; w = 0; } else {
+    u = (bb * d1 - ab * d3a) / den; w = (aa * d3a - ab * d1) / den;
+    if (u < 0 || w < 0 || u + w > 1) {
+      // проекция вне треугольника: зажимаем к ближайшему ребру (приближённо)
+      u = Math.max(0, u); w = Math.max(0, w);
+      const s = u + w; if (s > 1) { u /= s; w /= s; }
+    }
+  }
+  const x = ax + abx * u + acx * w, y = ay + aby * u + acy * w, z = az + abz * u + acz * w;
+  out[0] = x; out[1] = y; out[2] = z; out[3] = (x - px) ** 2 + (y - py) ** 2 + (z - pz) ** 2; out[4] = u; out[5] = w;
+  return out;
+}
+
 export class Builder {
   constructor() {
     this.pos = []; this.bone = []; this.patch = [];
@@ -192,30 +215,58 @@ export class Builder {
   //      capA / capB: true | { inset, s, part, rim } — торцы (плоский или утопленный: воздухозаборник, сопло) }
   loft(secsIn, o = {}) {
     const n = o.n || 12, half = n / 2, flat = !!o.flat, x0 = o.x || 0;
-    let secs = secsIn.map(normSec);
-    let segI = secs.map((_, i) => i), segF = secs.map(() => false);
-    if (o.frames && o.frames.length) {
-      // переплёты: вставляем узкие пояса шириной fw вокруг заданных z
-      const src = secs, fw = o.fw ?? 0.07;
-      const orig = (z) => { let i = 0; while (i < src.length - 2 && z >= src[i + 1].z - 1e-9) i++; return i; };
-      const mix = (z) => {
-        const i = orig(z), a = src[i], b = src[i + 1], t = (z - a.z) / (b.z - a.z), L = (k) => a[k] + (b[k] - a[k]) * t;
-        const pts = a.pts && b.pts ? a.pts.map((p, j) => [p[0] + (b.pts[j][0] - p[0]) * t, p[1] + (b.pts[j][1] - p[1]) * t]) : null;
-        return { z, y: L('y'), w: L('w'), h: L('h'), hb: L('hb'), e: L('e'), eb: L('eb'), x: L('x'), rk: L('rk'), pts };
+    const src = secsIn.map(normSec);
+    const hasPts = src.some((s) => s.pts);
+    let rmax = 0;
+    for (const s of src) rmax = Math.max(rmax, s.w, s.h, s.hb);
+    // дробление обвода: крупные тела — до ~24–32 граней по кругу
+    const m = hasPts ? 1 : (o.rs ?? Math.max(1, Math.min(3, Math.round((rmax > 1.2 ? 32 : rmax > 0.35 ? 22 : rmax > 0.12 ? 16 : 8) / n))));
+    const N = n * m;
+    // промежуточные сечения по монотонному сплайну: плавные носы, хвосты и обтекатели
+    const smooth = o.smooth !== false && src.length > 2;
+    const F = ['y', 'w', 'h', 'hb', 'x'];
+    const zsA = src.map((s) => s.z), slope = {};
+    if (smooth) for (const f of F) slope[f] = pchip(zsA, src.map((s) => s[f]));
+    const orig = (z) => { let i = 0; while (i < src.length - 2 && z >= src[i + 1].z - 1e-9) i++; return i; };
+    const mix = (z) => {
+      const i = orig(z), a = src[i], b = src[i + 1], L = b.z - a.z, t = L > 1e-9 ? Math.min(1, Math.max(0, (z - a.z) / L)) : 0;
+      const lin = (k) => a[k] + (b[k] - a[k]) * t;
+      const her = (k) => {
+        if (!smooth) return lin(k);
+        const d = slope[k], t2 = t * t, t3 = t2 * t;
+        return (2 * t3 - 3 * t2 + 1) * a[k] + (t3 - 2 * t2 + t) * L * d[i] + (-2 * t3 + 3 * t2) * b[k] + (t3 - t2) * L * d[i + 1];
       };
-      const zs = src.map((q) => [q.z, 0, q]);
-      for (const z of o.frames) zs.push([z - fw / 2, 1], [z + fw / 2, 2]);
-      zs.sort((a, b) => a[0] - b[0]);
-      secs = []; segI = []; segF = [];
-      for (let i = 0; i < zs.length; i++) {
-        const [z, kind, q] = zs[i];
-        if (kind === 0 && i > 0 && i < zs.length - 1 && zs[i - 1][1] === 1 && zs[i + 1][1] === 2) continue; // станция внутри переплёта
-        secs.push(kind === 0 ? q : mix(z));
-        segI.push(orig(z + 1e-6));
-        segF.push(kind === 1);
+      const pts = a.pts && b.pts ? a.pts.map((p, j) => [p[0] + (b.pts[j][0] - p[0]) * t, p[1] + (b.pts[j][1] - p[1]) * t]) : null;
+      return { z, y: her('y'), w: Math.max(0, her('w')), h: Math.max(0, her('h')), hb: Math.max(0, her('hb')), e: lin('e'), eb: lin('eb'), x: her('x'), rk: lin('rk'), pts };
+    };
+    const zs = src.map((q) => [q.z, 0, q]);
+    const maxSeg = o.maxSeg ?? Math.max(1.6, rmax * 1.8);
+    for (let i = 0; i < src.length - 1; i++) {
+      const a = src[i], b = src[i + 1], L = b.z - a.z;
+      if (L < 1e-6) continue;
+      let k = Math.ceil(L / maxSeg) - 1;
+      if (smooth) {
+        let dev = 0;
+        for (const f of ['y', 'w', 'h', 'hb']) dev = Math.max(dev, Math.abs(((slope[f][i] - slope[f][i + 1]) * L) / 8));
+        const tol = Math.max(0.005, 0.012 * Math.max(a.w, a.h, a.hb, b.w, b.h, b.hb));
+        k = Math.max(k, Math.min(3, Math.ceil(Math.sqrt(dev / tol)) - 1));
       }
+      for (let j = 1; j <= k; j++) zs.push([a.z + (L * j) / (k + 1), 3]);
     }
-    const rings = secs.map((s) => ringPts(s, n, flat, x0));
+    // переплёты: узкие пояса шириной fw вокруг заданных z
+    const fw = o.fw ?? 0.07, strips = [];
+    for (const z of o.frames || []) { zs.push([z - fw / 2, 1], [z + fw / 2, 2]); strips.push([z - fw / 2, z + fw / 2]); }
+    zs.sort((a, b) => a[0] - b[0]);
+    const secs = [], segI = [], segF = [];
+    for (let i = 0; i < zs.length; i++) {
+      const [z, kind, q] = zs[i];
+      if ((kind === 0 || kind === 3) && i > 0 && i < zs.length - 1 && strips.some((s) => z > s[0] + 1e-6 && z < s[1] - 1e-6)) continue; // внутри переплёта
+      if (kind === 3 && secs.length && Math.abs(secs[secs.length - 1].z - z) < 1e-4) continue;
+      secs.push(kind === 0 ? q : mix(z));
+      segI.push(orig(z + 1e-6));
+      segF.push(kind === 1);
+    }
+    const rings = secs.map((s) => ringPts(s, n, flat, x0, m));
     const ctr = secs.map((s) => [x0 + s.x, s.pts ? (s.pts[0][1] + s.pts[half][1]) / 2 : s.y + (s.h - s.hb) / 2, s.z]);
     const part = o.part || this.curPart;
     const bandOf = (k) => {
@@ -224,31 +275,44 @@ export class Builder {
       const a = th > 0.5 ? 2 - 2 * th : 2 * th;
       return { a, kk: flat ? Math.round(a * half) : Math.min(half - 1, Math.floor(a * half)), side: th > 0.5 ? -1 : 1 };
     };
+    const bands = [];
+    for (let k = 0; k < n; k++) bands.push(bandOf(k));
+    const lsg = o.sg ?? 0;
     for (let i = 0; i < secs.length - 1; i++) {
       const inside = lerp3(ctr[i], ctr[i + 1], 0.5);
-      for (let k = 0; k < n; k++) {
-        const k1 = (k + 1) % n, bd = bandOf(k);
+      for (let K = 0; K < N; K++) {
+        const K1 = (K + 1) % N, bd = bands[Math.floor(K / m)];
         let p = part;
         if (o.partOf) { const r = o.partOf(segI[i], bd.kk, bd.side, bd.a, segF[i], secs[i].z); if (r) p = r; }
-        this.face([rings[i][k], rings[i][k1], rings[i + 1][k1], rings[i + 1][k]], inside, { part: p, k: bd.kk, a: bd.a, i, side: bd.side, ...(o.meta || null) });
+        this.face([rings[i][K], rings[i][K1], rings[i + 1][K1], rings[i + 1][K]], inside, { part: p, k: bd.kk, a: bd.a, i, side: bd.side, sg: lsg, ...(o.meta || null) });
       }
     }
     const cap = (ri, dz, spec) => {
       if (!spec) return;
       const ring = rings[ri], c = ctr[ri];
       if (spec === true || !spec.inset) {
-        this.face(ring, [c[0], c[1], c[2] - dz], { part: (spec && spec.part) || part, cap: 1 });
+        this.face(ring, [c[0], c[1], c[2] - dz], { part: (spec && spec.part) || part, cap: 1, sg: this.sg() });
         return;
       }
       const s = spec.s ?? 0.8, d = spec.inset;
       const inner = ring.map((p) => [c[0] + (p[0] - c[0]) * s, c[1] + (p[1] - c[1]) * s, p[2] - dz * d]);
-      for (let k = 0; k < n; k++) {
-        const k1 = (k + 1) % n;
+      const rsg = this.sg();
+      for (let k = 0; k < N; k++) {
+        const k1 = (k + 1) % N;
         const q = [ring[k], ring[k1], inner[k1], inner[k]];
-        const m = [(q[0][0] + q[1][0]) / 2, (q[0][1] + q[1][1]) / 2, q[0][2]];
-        this.face(q, [c[0] + (m[0] - c[0]) * 3, c[1] + (m[1] - c[1]) * 3, m[2] - dz * d], { part: spec.rim || spec.part || part, cap: 1 });
+        const mm = [(q[0][0] + q[1][0]) / 2, (q[0][1] + q[1][1]) / 2, q[0][2]];
+        this.face(q, [c[0] + (mm[0] - c[0]) * 3, c[1] + (mm[1] - c[1]) * 3, mm[2] - dz * d], { part: spec.rim || spec.part || part, cap: 1, sg: rsg, sa: 70 });
       }
-      this.face(inner, [c[0], c[1], c[2] - dz * (d + 1)], { part: spec.part || part, cap: 1 });
+      const ip = spec.part || part;
+      this.face(inner, [c[0], c[1], c[2] - dz * (d + 1)], { part: ip, cap: 1, sg: this.sg() });
+      // глубина: обтекатель турбины в сопле, кок компрессора в воздухозаборнике
+      if (ip === 'nozzleIn' || ip === 'intake') {
+        let r = 0;
+        for (const p of inner) r = Math.max(r, Math.hypot(p[0] - c[0], p[1] - c[1]));
+        const ic = [c[0], c[1], inner[0][2]], nz = ip === 'nozzleIn';
+        const tip = [ic[0], ic[1], ic[2] + dz * (nz ? Math.min(d * 0.7, r * 0.9) : Math.min(d * 0.5, r * 0.6))];
+        this.withPart(nz ? 'cone' : 'fan', () => this.cyl(lerp3(ic, tip, -0.02), tip, r * (nz ? 0.42 : 0.34), 0.0, 8, { capB: false, capPart: nz ? 'nozzleIn' : 'intake' }));
+      }
     };
     cap(0, -1, o.capA);
     cap(secs.length - 1, 1, o.capB);
@@ -258,9 +322,9 @@ export class Builder {
       let i = 0;
       while (i < secs.length - 2 && z > secs[i + 1].z) i++;
       const t = Math.min(1, Math.max(0, (z - secs[i].z) / ((secs[i + 1].z - secs[i].z) || 1)));
-      const kf = a * half - (flat ? 0.5 : 0);
-      const k0 = Math.floor(Math.min(kf, half - (flat ? 0.5 : 0) - 1e-6)), f = kf - k0;
-      const idx = (k) => ((k % n) + n) % n;
+      const kf = (a * half - (flat ? 0.5 : 0)) * m;
+      const k0 = Math.floor(Math.min(kf, (half - (flat ? 0.5 : 0)) * m - 1e-6)), f = kf - k0;
+      const idx = (k) => ((k % N) + N) % N;
       const q = (r, k) => rings[r][idx(k)];
       const A0 = q(i, k0), A1 = q(i, k0 + 1), B0 = q(i + 1, k0), B1 = q(i + 1, k0 + 1);
       const pa = lerp3(A0, A1, f), pb = lerp3(B0, B1, f);
@@ -299,7 +363,11 @@ export class Builder {
     for (let i = 0; i < o.count; i++) {
       if (o.skip && o.skip(i)) continue;
       const z = o.count === 1 ? o.z0 : o.z0 + ((o.z1 - o.z0) * i) / (o.count - 1);
-      for (const sd of sides) this.decal(lf.at(z, o.a, sd), o.w, o.h, o.part || 'window', o.shape || 'rect', o.eps || 0.025);
+      for (const sd of sides) {
+        const at = lf.at(z, o.a, sd), e = o.eps || 0.025;
+        if (o.rim !== false) this.decal(at, o.w + 0.07, o.h + 0.07, o.rimPart || 'winRim', o.shape || 'rect', e - 0.009);
+        this.decal(at, o.w, o.h, o.part || 'window', o.shape || 'rect', e);
+      }
     }
   }
 
@@ -355,10 +423,13 @@ export class Builder {
       }
       bp = out;
     }
+    // профиль: 10 точек (скруглённый носок: у толстых крыльев сглаживается, у тонких остаётся острым)
+    const vT0 = vT * 0.3, vB0 = vB * 0.3;
     const loop = (S, uh) => {
       const k = (1 - uh) / 0.7;
-      return [P(S, 0, 0), P(S, 0.06, vT1), P(S, 0.3, vT), P(S, uh, vT * k), P(S, 1, 0), P(S, uh, vB * k), P(S, 0.3, vB), P(S, 0.06, vB1)];
+      return [P(S, 0, 0), P(S, 0.012, vT0), P(S, 0.06, vT1), P(S, 0.3, vT), P(S, uh, vT * k), P(S, 1, 0), P(S, uh, vB * k), P(S, 0.3, vB), P(S, 0.06, vB1), P(S, 0.012, vB0)];
     };
+    const wsg = o.sg ?? this.sg(), csg = this.sg();
     const build = () => {
       for (let i = 0; i < bp.length - 1; i++) {
         const sa = bp[i], sb = bp[i + 1], sm = (sa + sb) / 2;
@@ -366,31 +437,32 @@ export class Builder {
         const uh = c ? 1 - c.f : 1 - (o.f ?? 0.28);
         const A = evalSt(sa), B = evalSt(sb), LA = loop(A, uh), LB = loop(B, uh);
         const inside = lerp3(P(A, 0.4, (vT + vB) / 2), P(B, 0.4, (vT + vB) / 2), 0.5);
-        const uc = [0.03, 0.18, (0.3 + uh) / 2, (uh + 1) / 2, (1 + uh) / 2, (uh + 0.3) / 2, 0.18, 0.03];
+        const uc = [0.006, 0.036, 0.18, (0.3 + uh) / 2, (uh + 1) / 2, (1 + uh) / 2, (uh + 0.3) / 2, 0.18, 0.036, 0.006];
         const sp = (sm - sMin) / ((sMax - sMin) || 1);
-        const m = (j, extra) => ({ part, sp, ch: uc[j], top: j < 4, wing: 1, ...(o.meta || null), ...extra });
+        const m = (j, extra) => ({ part, sp, ch: uc[j], top: j < 5, wing: 1, sg: wsg, sa: 89, ...(o.meta || null), ...extra });
         const q = (j, j1, extra) => this.face([LA[j], LA[j1], LB[j1], LB[j]], inside, m(j, extra));
+        const hard = () => ({ sg: this.sg() });
         if (!c) {
-          for (let j = 0; j < 8; j++) q(j, (j + 1) % 8);
+          for (let j = 0; j < 10; j++) q(j, (j + 1) % 10);
         } else {
-          q(0, 1); q(1, 2); q(2, 3); q(5, 6); q(6, 7); q(7, 0);
-          this.face([LA[3], LA[5], LB[5], LB[3]], inside, m(3, { part: 'dark' }));
-          const ci = lerp3(lerp3(LA[3], LA[5], 0.5), lerp3(LB[3], LB[5], 0.5), 0.5);
-          const cin = lerp3(ci, lerp3(LA[4], LB[4], 0.5), 0.3);
+          q(0, 1); q(1, 2); q(2, 3); q(3, 4); q(6, 7); q(7, 8); q(8, 9); q(9, 0);
+          this.face([LA[4], LA[6], LB[6], LB[4]], inside, m(4, { part: 'dark', ...hard() }));
+          const ci = lerp3(lerp3(LA[4], LA[6], 0.5), lerp3(LB[4], LB[6], 0.5), 0.5);
+          const cin = lerp3(ci, lerp3(LA[5], LB[5], 0.5), 0.3);
           this.withBone(c.bone, () => {
-            this.face([LA[3], LA[4], LB[4], LB[3]], cin, m(3, { ctl: c.ch }));
-            this.face([LA[4], LA[5], LB[5], LB[4]], cin, m(4, { ctl: c.ch }));
-            this.face([LA[3], LA[4], LA[5]], cin, m(3, { ctl: c.ch }));
-            this.face([LB[3], LB[4], LB[5]], cin, m(3, { ctl: c.ch }));
+            this.face([LA[4], LA[5], LB[5], LB[4]], cin, m(4, { ctl: c.ch, sg: csg }));
+            this.face([LA[5], LA[6], LB[6], LB[5]], cin, m(5, { ctl: c.ch, sg: csg }));
+            this.face([LA[4], LA[5], LA[6]], cin, m(4, { ctl: c.ch, ...hard() }));
+            this.face([LB[4], LB[5], LB[6]], cin, m(4, { ctl: c.ch, ...hard() }));
           });
         }
         // торцы неподвижной части рядом с рулём
         const prev = i > 0 ? ctl.find((q2) => (bp[i - 1] + sa) / 2 > q2.s0 && (bp[i - 1] + sa) / 2 < q2.s1) : null;
         const next = i < bp.length - 2 ? ctl.find((q2) => (bp[i + 2] + sb) / 2 > q2.s0 && (bp[i + 2] + sb) / 2 < q2.s1) : null;
-        if (!c && prev) this.face([LA[3], LA[4], LA[5]], inside, m(3, { part: 'dark' }));
-        if (!c && next) this.face([LB[3], LB[4], LB[5]], inside, m(3, { part: 'dark' }));
-        if (i === 0 && o.capRoot) this.face(LA, inside, m(1));
-        if (i === bp.length - 2 && o.capTip !== false) this.face(LB, inside, m(1, { tip: 1 }));
+        if (!c && prev) this.face([LA[4], LA[5], LA[6]], inside, m(4, { part: 'dark', ...hard() }));
+        if (!c && next) this.face([LB[4], LB[5], LB[6]], inside, m(4, { part: 'dark', ...hard() }));
+        if (i === 0 && o.capRoot) this.face(LA, inside, m(2, hard()));
+        if (i === bp.length - 2 && o.capTip !== false) this.face(LB, inside, m(2, { tip: 1, ...hard() }));
       }
     };
     if (wb) this.withBone(wb, build); else build();
@@ -398,8 +470,8 @@ export class Builder {
     if (o.tipAnchor) this.anchors.wingtips.push(P(tipS, 0.5, 0));
     // точка на поверхности крыла: s, u (доля хорды), top
     const vAt = (u, top) => {
-      const pk = top ? [[0, 0], [0.06, vT1], [0.3, vT], [1, 0]] : [[0, 0], [0.06, vB1], [0.3, vB], [1, 0]];
-      for (let i = 0; i < 3; i++) if (u <= pk[i + 1][0]) return pk[i][1] + ((pk[i + 1][1] - pk[i][1]) * (u - pk[i][0])) / (pk[i + 1][0] - pk[i][0]);
+      const pk = top ? [[0, 0], [0.012, vT0], [0.06, vT1], [0.3, vT], [1, 0]] : [[0, 0], [0.012, vB0], [0.06, vB1], [0.3, vB], [1, 0]];
+      for (let i = 0; i < 4; i++) if (u <= pk[i + 1][0]) return pk[i][1] + ((pk[i + 1][1] - pk[i][1]) * (u - pk[i][0])) / (pk[i + 1][0] - pk[i][0]);
       return 0;
     };
     const at = (s, u, top = true) => {
@@ -429,10 +501,10 @@ export class Builder {
       return out;
     };
     const A = ring(p0, r0), B = ring(p1, r1), mid = lerp3(p0, p1, 0.5);
-    const meta = o.meta || null;
-    for (let k = 0; k < n; k++) { const k1 = (k + 1) % n; this.face([A[k], A[k1], B[k1], B[k]], mid, { part: o.part || this.curPart, ...meta }); }
-    if (o.capA !== false && r0 > 1e-4) this.face(A, mid, { part: o.capPart || o.part || this.curPart, ...meta });
-    if (o.capB !== false && r1 > 1e-4) this.face(B, mid, { part: o.capPart || o.part || this.curPart, ...meta });
+    const meta = o.meta || null, csg = this.sg();
+    for (let k = 0; k < n; k++) { const k1 = (k + 1) % n; this.face([A[k], A[k1], B[k1], B[k]], mid, { part: o.part || this.curPart, sg: csg, sa: o.sa ?? 100, ...meta }); }
+    if (o.capA !== false && r0 > 1e-4) this.face(A, mid, { part: o.capPart || o.part || this.curPart, sg: this.sg(), ...meta });
+    if (o.capB !== false && r1 > 1e-4) this.face(B, mid, { part: o.capPart || o.part || this.curPart, sg: this.sg(), ...meta });
   }
 
   // балка прямоугольного сечения: полуразмеры a (поперёк, в плоскости с hint) и b
@@ -445,14 +517,14 @@ export class Builder {
     const v = norm(cross(ax, u)); // v лежит в плоскости (ax, hint)
     const ring = (c, k) => [add(c, add(mul(u, a * k), mul(v, b * k))), add(c, add(mul(u, -a * k), mul(v, b * k))), add(c, add(mul(u, -a * k), mul(v, -b * k))), add(c, add(mul(u, a * k), mul(v, -b * k)))];
     const A = ring(p0, 1), B = ring(p1, o.taper ?? 1), mid = lerp3(p0, p1, 0.5);
-    const meta = { part: o.part || this.curPart, ...(o.meta || null) };
+    const meta = { part: o.part || this.curPart, sa: 20, ...(o.meta || null) };
     for (let k = 0; k < 4; k++) { const k1 = (k + 1) % 4; this.face([A[k], A[k1], B[k1], B[k]], mid, meta); }
     this.face(A, mid, meta);
     this.face(B, mid, meta);
   }
 
   box(mn, mx, part) {
-    const c = lerp3(mn, mx, 0.5), m = { part: part || this.curPart };
+    const c = lerp3(mn, mx, 0.5), m = { part: part || this.curPart, sa: 20 };
     const p = (i, j, k) => [i ? mx[0] : mn[0], j ? mx[1] : mn[1], k ? mx[2] : mn[2]];
     this.face([p(0, 0, 0), p(1, 0, 0), p(1, 1, 0), p(0, 1, 0)], c, m);
     this.face([p(0, 0, 1), p(1, 0, 1), p(1, 1, 1), p(0, 1, 1)], c, m);
@@ -468,11 +540,14 @@ export class Builder {
     const xs = simple ? [-w / 2, w / 2] : [-w / 2, -w * 0.28, w * 0.28, w / 2];
     const rs = simple ? [r, r] : [r * 0.84, r, r, r * 0.84];
     const R = xs.map((x, i) => ring(c[0] + x, rs[i]));
-    for (let i = 0; i < R.length - 1; i++) for (let k = 0; k < n; k++) { const k1 = (k + 1) % n; this.face([R[i][k], R[i][k1], R[i + 1][k1], R[i + 1][k]], c, { part: 'tire' }); }
+    const tsg = this.sg();
+    for (let i = 0; i < R.length - 1; i++) for (let k = 0; k < n; k++) { const k1 = (k + 1) % n; this.face([R[i][k], R[i][k1], R[i + 1][k1], R[i + 1][k]], c, { part: 'tire', sg: tsg }); }
     for (const sgn of [-1, 1]) {
       const x = c[0] + (sgn * w) / 2, edge = sgn < 0 ? R[0] : R[R.length - 1];
-      this.face(edge, c, { part: 'tire' });
-      this.face(ring(x + sgn * 0.012, r * 0.5), c, { part: 'hub' });
+      this.face(edge, c, { part: 'tire', sg: this.sg() });
+      // колёсный диск: выпуклая ступица с тёмным центром
+      const hr = ring(x + sgn * 0.012, r * 0.56), hc = [x + sgn * (0.012 + r * 0.1), c[1], c[2]], hsg = this.sg();
+      for (let k = 0; k < n; k++) this.face([hr[k], hr[(k + 1) % n], hc], c, { part: 'hub', sg: hsg, sa: 80 });
     }
   }
 
@@ -537,10 +612,10 @@ export class Builder {
     if (o.out && n[0] * o.out[0] + n[1] * o.out[1] + n[2] * o.out[2] < 0) n = mul(n, -1);
     const A = pts.map((p) => add(p, mul(n, th / 2))), B = pts.map((p) => sub(p, mul(n, th / 2)));
     const c = mul(pts.reduce((s, p) => add(s, p), [0, 0, 0]), 1 / pts.length);
-    const m = { part: o.part || 'fus', ...(o.meta || null) };
+    const m = { part: o.part || 'fus', sa: 20, ...(o.meta || null) };
     this.face(A, c, m);
     this.face(B, c, { ...m, part: o.inner || 'dark' });
-    for (let i = 0; i < pts.length; i++) { const j = (i + 1) % pts.length; this.face([A[i], A[j], B[j], B[i]], c, m); }
+    for (let i = 0; i < pts.length; i++) { const j = (i + 1) % pts.length; this.face([A[i], A[j], B[j], B[i]], c, { ...m, sg: this.sg() }); }
   }
 
   // воздушный винт: { c, r, blades, chord, name, pitch, tip (жёлтые законцовки), dir }
@@ -738,6 +813,162 @@ export class Builder {
     this.curBone = prev;
   }
 
+  // ---------- гладкие нормали ----------
+  // Вершины с общим положением, костью и группой сглаживания усредняют нормали граней, отличающихся не больше
+  // чем на угол сглаживания (sa грани; по умолчанию 50°, крыло — 89°: скруглённый носок, острая задняя кромка).
+  // «Наклейки» (иллюминаторы, знаки) берут нормаль подлежащей поверхности — иначе плоская наклейка «светится» на круглом борту.
+  smoothNormals() {
+    const P = this.pos, nv = P.length / 3, nt = nv / 3, pats = this.patch;
+    const fn = new Float32Array(nt * 3), cosT = new Float32Array(nt), sgT = new Int32Array(nt), dec = new Uint8Array(nt), ang = new Float32Array(nv);
+    for (const p of pats) {
+      const sa = p.sa ?? (p.wing ? 89 : PART_SA[p.part] ?? 50), c = Math.cos((sa * Math.PI) / 180);
+      for (let t = p.v / 3; t < (p.v + p.n) / 3; t++) { cosT[t] = c; sgT[t] = p.sg || 0; dec[t] = p.decal ? 1 : 0; }
+    }
+    for (let t = 0; t < nt; t++) {
+      const a = t * 9;
+      const ux = P[a + 3] - P[a], uy = P[a + 4] - P[a + 1], uz = P[a + 5] - P[a + 2];
+      const wx = P[a + 6] - P[a], wy = P[a + 7] - P[a + 1], wz = P[a + 8] - P[a + 2];
+      let nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
+      const l = Math.hypot(nx, ny, nz) || 1;
+      fn[t * 3] = nx / l; fn[t * 3 + 1] = ny / l; fn[t * 3 + 2] = nz / l;
+      for (let c = 0; c < 3; c++) {
+        const i = t * 3 + c, j = t * 3 + ((c + 1) % 3), k = t * 3 + ((c + 2) % 3);
+        const ax = P[j * 3] - P[i * 3], ay = P[j * 3 + 1] - P[i * 3 + 1], az = P[j * 3 + 2] - P[i * 3 + 2];
+        const bx = P[k * 3] - P[i * 3], by = P[k * 3 + 1] - P[i * 3 + 1], bz = P[k * 3 + 2] - P[i * 3 + 2];
+        const la = Math.hypot(ax, ay, az), lb = Math.hypot(bx, by, bz);
+        ang[i] = la > 1e-9 && lb > 1e-9 ? Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by + az * bz) / (la * lb)))) : 0;
+      }
+    }
+    const nrm = new Float32Array(nv * 3);
+    const groups = new Map(), q = 1e4;
+    for (let v = 0; v < nv; v++) {
+      const t = (v / 3) | 0;
+      if (dec[t]) continue;
+      const key = Math.round(P[v * 3] * q) + ',' + Math.round(P[v * 3 + 1] * q) + ',' + Math.round(P[v * 3 + 2] * q) + ',' + this.bone[v] + ',' + sgT[t];
+      const g = groups.get(key);
+      if (g) g.push(v); else groups.set(key, [v]);
+    }
+    for (const g of groups.values()) {
+      for (const v of g) {
+        const t = (v / 3) | 0;
+        let sx = 0, sy = 0, sz = 0;
+        for (const u of g) {
+          const t2 = (u / 3) | 0;
+          const d = fn[t * 3] * fn[t2 * 3] + fn[t * 3 + 1] * fn[t2 * 3 + 1] + fn[t * 3 + 2] * fn[t2 * 3 + 2];
+          if (t2 !== t && d < Math.max(cosT[t], cosT[t2]) - 1e-6) continue;
+          const w = t2 === t ? Math.max(ang[u], 1e-3) : ang[u];
+          sx += fn[t2 * 3] * w; sy += fn[t2 * 3 + 1] * w; sz += fn[t2 * 3 + 2] * w;
+        }
+        const l = Math.hypot(sx, sy, sz) || 1;
+        nrm[v * 3] = sx / l; nrm[v * 3 + 1] = sy / l; nrm[v * 3 + 2] = sz / l;
+      }
+    }
+    // наклейки: нормаль ближайшей точки подлежащей (не наклеечной) поверхности той же кости
+    const box = new Float32Array(nt * 6);
+    for (let t = 0; t < nt; t++) {
+      const a = t * 9;
+      box[t * 6] = Math.min(P[a], P[a + 3], P[a + 6]); box[t * 6 + 1] = Math.min(P[a + 1], P[a + 4], P[a + 7]); box[t * 6 + 2] = Math.min(P[a + 2], P[a + 5], P[a + 8]);
+      box[t * 6 + 3] = Math.max(P[a], P[a + 3], P[a + 6]); box[t * 6 + 4] = Math.max(P[a + 1], P[a + 4], P[a + 7]); box[t * 6 + 5] = Math.max(P[a + 2], P[a + 5], P[a + 8]);
+    }
+    const cp = [0, 0, 0, 0, 0, 0];
+    for (const p of pats) {
+      if (!p.decal) continue;
+      const t0 = p.v / 3, bone = this.bone[p.v], E = 0.12;
+      const nd = [fn[t0 * 3], fn[t0 * 3 + 1], fn[t0 * 3 + 2]];
+      let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+      for (let v = p.v; v < p.v + p.n; v++) {
+        x0 = Math.min(x0, P[v * 3]); y0 = Math.min(y0, P[v * 3 + 1]); z0 = Math.min(z0, P[v * 3 + 2]);
+        x1 = Math.max(x1, P[v * 3]); y1 = Math.max(y1, P[v * 3 + 1]); z1 = Math.max(z1, P[v * 3 + 2]);
+      }
+      const cand = [];
+      for (let t = 0; t < nt; t++) {
+        if (dec[t] || this.bone[t * 3] !== bone) continue;
+        if (box[t * 6] > x1 + E || box[t * 6 + 3] < x0 - E || box[t * 6 + 1] > y1 + E || box[t * 6 + 4] < y0 - E || box[t * 6 + 2] > z1 + E || box[t * 6 + 5] < z0 - E) continue;
+        if (fn[t * 3] * nd[0] + fn[t * 3 + 1] * nd[1] + fn[t * 3 + 2] * nd[2] < 0.4) continue;
+        cand.push(t);
+      }
+      for (let v = p.v; v < p.v + p.n; v++) {
+        let best = Infinity, bt = -1, bu = 0, bw = 0;
+        for (const t of cand) {
+          closestOnTri(P, t, P[v * 3], P[v * 3 + 1], P[v * 3 + 2], cp);
+          if (cp[3] < best) { best = cp[3]; bt = t; bu = cp[4]; bw = cp[5]; }
+        }
+        let nx = nd[0], ny = nd[1], nz = nd[2];
+        if (bt >= 0) {
+          const i = bt * 9, a = 1 - bu - bw;
+          nx = nrm[i] * a + nrm[i + 3] * bu + nrm[i + 6] * bw; ny = nrm[i + 1] * a + nrm[i + 4] * bu + nrm[i + 7] * bw; nz = nrm[i + 2] * a + nrm[i + 5] * bu + nrm[i + 8] * bw;
+          const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+        }
+        nrm[v * 3] = nx; nrm[v * 3 + 1] = ny; nrm[v * 3 + 2] = nz;
+      }
+    }
+    this.fn = fn;
+    return nrm;
+  }
+
+  // ---------- запекание объёма (ambient occlusion) в вершины ----------
+  // Каждая грань — излучатель-«диск» (крупные дробятся), приёмник — вершина с нормалью: затенение = Σ A·cosθe·cosθr / (π d² + A).
+  // Затемняются корни крыльев, ниши, места под крылом, воздухозаборники, стыки. Убираемые/вращающиеся части не затеняют.
+  bakeAO(nrm) {
+    const P = this.pos, nv = P.length / 3, nt = nv / 3, fn = this.fn, bones = this.bones, pats = this.patch;
+    let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < nv; i++) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], P[i * 3 + k]); hi[k] = Math.max(hi[k], P[i * 3 + k]); }
+    const size = Math.max(hi[0] - lo[0], hi[2] - lo[2]);
+    const R = Math.min(2.6, Math.max(1.0, size * 0.06)), R2 = R * R, ES = Math.max(0.35, R * 0.45);
+    const dec = new Uint8Array(nt);
+    for (const p of pats) if (p.decal) for (let t = p.v / 3; t < (p.v + p.n) / 3; t++) dec[t] = 1;
+    // излучатели
+    const E = [];
+    for (let t = 0; t < nt; t++) {
+      if (dec[t] || AO_SKIP[bones[this.bone[t * 3]].ch]) continue;
+      const a = t * 9;
+      const A = [P[a], P[a + 1], P[a + 2]], B = [P[a + 3], P[a + 4], P[a + 5]], C = [P[a + 6], P[a + 7], P[a + 8]];
+      const area = len(cross(sub(B, A), sub(C, A))) / 2;
+      if (area < 1e-6) continue;
+      const k = Math.min(6, Math.max(1, Math.ceil(Math.max(Math.sqrt(d2(A, B)), Math.sqrt(d2(B, C)), Math.sqrt(d2(C, A))) / ES)));
+      const cnt = (k * (k + 1)) / 2, ea = area / cnt;
+      for (let i = 0; i < k; i++) for (let j = 0; i + j < k; j++) {
+        const u = (i + 1 / 3) / k, w = (j + 1 / 3) / k, v0 = 1 - u - w;
+        E.push(A[0] * v0 + B[0] * u + C[0] * w, A[1] * v0 + B[1] * u + C[1] * w, A[2] * v0 + B[2] * u + C[2] * w, fn[t * 3], fn[t * 3 + 1], fn[t * 3 + 2], ea);
+      }
+    }
+    const grid = new Map(), cell = (x) => Math.floor(x / R);
+    for (let e = 0; e < E.length; e += 7) {
+      const key = cell(E[e]) + ',' + cell(E[e + 1]) + ',' + cell(E[e + 2]);
+      const g = grid.get(key);
+      if (g) g.push(e); else grid.set(key, [e]);
+    }
+    const ao = new Float32Array(nv).fill(1), cache = new Map();
+    for (let v = 0; v < nv; v++) {
+      const nx = nrm[v * 3], ny = nrm[v * 3 + 1], nz = nrm[v * 3 + 2];
+      const px = P[v * 3] + nx * 0.015, py = P[v * 3 + 1] + ny * 0.015, pz = P[v * 3 + 2] + nz * 0.015;
+      const key = Math.round(px * 500) + ',' + Math.round(py * 500) + ',' + Math.round(pz * 500) + ',' + Math.round(nx * 8) + ',' + Math.round(ny * 8) + ',' + Math.round(nz * 8);
+      const hit = cache.get(key);
+      if (hit !== undefined) { ao[v] = hit; continue; }
+      let occ = 0;
+      const cx = cell(px), cy = cell(py), cz = cell(pz);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) {
+        const g = grid.get((cx + i) + ',' + (cy + j) + ',' + (cz + k));
+        if (!g) continue;
+        for (const e of g) {
+          const dx = E[e] - px, dy = E[e + 1] - py, dz = E[e + 2] - pz, dd = dx * dx + dy * dy + dz * dz;
+          if (dd > R2 || dd < 1e-8) continue;
+          const il = 1 / Math.sqrt(dd);
+          const cr = (dx * nx + dy * ny + dz * nz) * il;
+          if (cr <= 0.03) continue;
+          const ce = -(dx * E[e + 3] + dy * E[e + 4] + dz * E[e + 5]) * il;
+          if (ce <= 0) continue;
+          const A = E[e + 6], fall = 1 - dd / R2;
+          occ += ((A * ce * cr) / (Math.PI * dd + A)) * fall;
+        }
+      }
+      const r = Math.max(0, 1 - occ);
+      cache.set(key, r);
+      ao[v] = r;
+    }
+    return ao;
+  }
+
   // ---------- итог ----------
   finish(cg) {
     const sh = (p) => [p[0] - cg[0], p[1] - cg[1], p[2] - cg[2]];
@@ -750,11 +981,13 @@ export class Builder {
     out.wingtips.sort((a, b) => a[0] - b[0]);
     out.gearNose = A.gearNose ? sh(A.gearNose) : null;
     const nv = this.pos.length / 3, no = this.opos.length / 3;
+    const nrm = this.smoothNormals();
+    const ao = this.bakeAO(nrm);
     const skin = (bone, n) => { const a = new Uint8Array(n * 4); for (let i = 0; i < n; i++) a[i * 4] = bone[i]; return a; };
     const weight = (n) => { const a = new Uint8Array(n * 4); for (let i = 0; i < n; i++) a[i * 4] = 255; return a; };
     return {
       cg,
-      pos: new Float32Array(this.pos), skinIndex: skin(this.bone, nv), skinWeight: weight(nv), patches: this.patch,
+      pos: new Float32Array(this.pos), nrm, ao, skinIndex: skin(this.bone, nv), skinWeight: weight(nv), patches: this.patch,
       opos: new Float32Array(this.opos), oskinIndex: skin(this.obone, no), oskinWeight: weight(no), ocol: new Float32Array(this.ocol),
       bones: this.bones, anchors: out, tris: nv / 3,
     };

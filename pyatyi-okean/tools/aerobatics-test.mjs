@@ -2,7 +2,8 @@
 // Проверка выполнимости и распознавания фигур пилотажа: node tools/aerobatics-test.mjs [id самолёта] [--v] [--noassist]
 // Мок-мир (ровная земля), лётная модель physics.js + распознаватель TrickDetector из systems/aerobatics.js.
 // «Пилот» задаёт управление так, как это делает игрок большим пальцем: ручка полностью на себя / вбок, полный газ,
-// отпускание ручки по простым признакам («встал в горизонт», «вверх ногами»). Помощь пилоту включена (как у папы).
+// отпускание ручки по простым признакам («встал в горизонт», «вверх ногами»). Помощь пилоту включена (как у папы);
+// --noassist — справочный прогон без помощи (там ручка «до упора» честно срывает самолёт). TRACE=1 — след распознавателя.
 import { Vector3 } from 'three';
 import { createAircraft, placeAircraft, stepAircraft } from '../src/aircraft/physics.js';
 import { TrickDetector, TRICKS } from '../src/systems/aerobatics.js';
@@ -56,11 +57,13 @@ function fly(id, phases, { alt = 1500, speed } = {}) {
       ac.controls.throttle = c.throttle ?? 1;
       stepAircraft(ac, env, DT);
       det.step(ac, DT);
+      if (process.env.TRACE && i % 30 === 0) console.log(ph.name, (t).toFixed(0), 'hh', det.hhPhase, det.hhBack, (det.hhMinIas*3.6).toFixed(0), 'exc', det.exc, det.refOk, 'st', ac.stalled, 'fy', att(ac).fy.toFixed(2), 'uy', att(ac).uy.toFixed(2), 'bank', (ac.bank * 57.3).toFixed(0), 'tOn', det.tOn, 'tAcc', (det.tAcc * 57.3).toFixed(0), 'alt', ac.alt.toFixed(0), 'tAlt0', det.tAlt0.toFixed(0), 'ias', ac.ias.toFixed(0));
       t += DT;
       if (ac.stalled) stalled += DT;
       if (ph.track) { minIas = Math.min(minIas, ac.ias); maxAlt = Math.max(maxAlt, ac.alt); minAlt = Math.min(minAlt, ac.alt); }
     }
-    log.push(`${ph.name}:${(t - st.t0).toFixed(1)}с${i >= n ? '(таймаут)' : ''}`);
+    const a = att(ac);
+    log.push(`${ph.name}:${(t - st.t0).toFixed(1)}с${i >= n ? '(таймаут)' : ''}` + (verbose ? ` [V=${(ac.ias * 3.6).toFixed(0)} h=${ac.alt.toFixed(0)} нос=${(Math.asin(a.fy) * 57.3).toFixed(0)}° верх=${a.uy.toFixed(2)} Vy=${ac.vs.toFixed(0)}]` : ''));
   }
   return { got, ac, log, minIas, maxAlt, minAlt, stalled, t };
 }
@@ -73,7 +76,15 @@ const speedUp = (k = 0.92) => ({
   ctl: (ac) => ({ throttle: 1, pitch: ac.pitch > -0.12 ? -0.25 : 0 }),
   until: (ac) => ac.ias > k * ac.spec.vMax,
 });
-const recover = { name: 'выход', max: 12, ctl: { throttle: 1 }, until: (ac, st) => st.a.uy > 0.95 && Math.abs(st.a.fy) < 0.15 && st.dt > 1 };
+// выйти на скорость k × Vсв: газ/малый газ, при нехватке — пологое снижение
+const speedTo = (k) => ({
+  name: `скорость ${k}Vсв`, max: 60,
+  ctl: (ac) => { const tgt = k * ac.spec.vStall; return { throttle: ac.ias < tgt ? 1 : 0, pitch: ac.ias < tgt - 3 && ac.pitch > -0.12 ? -0.25 : 0 }; },
+  until: (ac) => Math.abs(ac.ias - k * ac.spec.vStall) < 3 && Math.abs(ac.vs) < 15,
+});
+const clamp1 = (v) => Math.max(-1, Math.min(1, v));
+// игрок выравнивает самолёт в горизонт: крыло в горизонт, нос к горизонту
+const recover = { name: 'выход', max: 12, ctl: (ac, st) => ({ throttle: 1, roll: st.a.uy > 0 ? clamp1(-ac.bank * 2) : 0, pitch: clamp1(-st.a.fy * 4 - ac.vs * 0.02) }), until: (ac, st) => st.a.uy > 0.95 && Math.abs(st.a.fy) < 0.15 && st.dt > 1 };
 
 const SCEN = {
   roll: [
@@ -95,22 +106,22 @@ const SCEN = {
     speedUp(),
     {
       name: 'на себя до спины', max: 30, track: true, ctl: { pitch: 1, throttle: 1 },
-      until: (ac, st) => { if (st.a.fy > 0.8) st.flags.up = true; return st.flags.up && st.a.uy < -0.5 && st.a.fy < 0.25; },
+      until: (ac, st) => { if (st.a.fy > 0.8) st.flags.up = true; return st.flags.up && st.a.uy < -0.5 && st.a.fy < 0.08; },
     },
     { name: 'полубочка', max: 6, ctl: { roll: 1, throttle: 1 }, until: (ac, st) => st.a.uy > 0.8 },
     recover,
   ],
   splits: [
-    toLevel,
-    { name: 'полубочка', max: 6, ctl: { roll: 1, throttle: 0.6 }, until: (ac, st) => st.a.uy < -0.9 },
+    speedTo(2.2),
+    { name: 'полубочка', max: 6, ctl: { roll: 1, throttle: 0.3 }, until: (ac, st) => st.a.uy < -0.9 },
     {
-      name: 'на себя', max: 30, track: true, ctl: { pitch: 1, throttle: 0.6 },
+      name: 'на себя', max: 30, track: true, ctl: { pitch: 1, throttle: 0.3 },
       until: (ac, st) => { if (st.a.fy < -0.4) st.flags.down = true; return st.flags.down && st.a.fy > -0.05; },
     },
     recover,
   ],
   chandelle: [
-    speedUp(0.85),
+    speedTo(2.6),
     { name: 'крен 60', max: 3, ctl: (ac) => ({ roll: ac.bank < 1.0 ? 1 : 0, throttle: 1 }), until: (ac) => ac.bank > 0.95 },
     {
       name: 'тянем в набор', max: 25, track: true,
@@ -121,12 +132,11 @@ const SCEN = {
     { name: 'в горизонт', max: 10, ctl: (ac) => ({ pitch: ac.pitch > 0.05 ? -0.5 : 0, throttle: 1 }), until: (ac, st) => st.a.uy > 0.95 && Math.abs(st.a.fy) < 0.15 && Math.abs(ac.vs) < 6 },
   ],
   turn360: [
-    toLevel,
+    speedTo(2.2),
     { name: 'крен 60', max: 3, ctl: (ac) => ({ roll: ac.bank < 1.05 ? 1 : 0, throttle: 1 }), until: (ac) => ac.bank > 1.0 },
     {
       name: 'вираж', max: 60, track: true,
-      ctl: (ac) => ({ pitch: Math.max(0, Math.min(1, 0.45 - ac.vs * 0.08)), roll: ac.bank > 1.1 ? -0.3 : ac.bank < 0.95 ? 0.3 : 0, throttle: 1 }),
-      until: (ac, st) => st.dt > 50 || st.det,
+      ctl: (ac) => ({ pitch: Math.max(0, Math.min(1, 0.6 - ac.vs * 0.2)), roll: ac.bank > 1.25 ? -0.3 : ac.bank < 1.1 ? 0.3 : 0, throttle: ac.ias < 2.2 * ac.spec.vStall ? 1 : 0.3 }),
     },
   ],
   inverted: [
@@ -134,7 +144,7 @@ const SCEN = {
     { name: 'на спину', max: 6, ctl: { roll: 1, throttle: 1 }, until: (ac, st) => st.a.uy < -0.95 },
     // от себя — держим горизонт вверх ногами
     { name: 'держим', max: 6, track: true, ctl: (ac) => ({ pitch: Math.max(-1, Math.min(0, -0.35 - ac.vs * 0.06 + (ac.pitch > 0.1 ? 0.3 : 0))), throttle: 1 }) },
-    { name: 'на ноги', max: 6, ctl: { roll: 1, throttle: 1 }, until: (ac, st) => st.a.uy > 0.9 },
+    { name: 'на ноги', max: 6, ctl: { roll: 1, throttle: 1 }, until: (ac, st) => st.a.uy > 0.5 },
   ],
   knife: [
     toLevel,
@@ -143,9 +153,9 @@ const SCEN = {
     { name: 'выход', max: 4, ctl: (ac) => ({ roll: -1, throttle: 1 }), until: (ac) => Math.abs(ac.bank) < 0.2 },
   ],
   hammerhead: [
-    speedUp(0.85),
+    speedTo(2.2),
     { name: 'в вертикаль', max: 10, ctl: { pitch: 1, throttle: 1 }, until: (ac, st) => st.a.fy > 0.93 },
-    { name: 'горка, газ убран', max: 20, track: true, ctl: { throttle: 0 }, until: (ac, st) => st.a.fy < -0.85 },
+    { name: 'горка, газ убран', max: 45, track: true, ctl: { throttle: 0 }, until: (ac, st) => st.a.fy < -0.4 },
     { name: 'вывод', max: 20, ctl: { pitch: 1, throttle: 1 }, until: (ac, st) => st.a.fy > 0 && st.dt > 1 },
     recover,
   ],
@@ -157,10 +167,10 @@ console.log(`Пилотаж: помощь пилоту ${assist ? 'ВКЛ' : 'В
 for (const id of PLANES) {
   console.log(`\n=== ${id} ===`);
   for (const [name, phases] of Object.entries(SCEN)) {
-    const r = fly(id, phases, name === 'lowpass' ? { alt: 10 } : {});
+    const r = fly(id, phases, { alt: name === 'splits' || name === 'hammerhead' ? 2500 : 1500 });
     const ok = r.got.includes(name);
-    if (!ok && MUST.includes(name)) fails.push(`${id}: ${name} (засчитано: ${r.got.join(', ') || 'ничего'})`);
-    const extra = r.minIas < Infinity ? ` minV=${(r.minIas * 3.6).toFixed(0)}км/ч Δh=${(r.maxAlt - 1500).toFixed(0)}/${(r.minAlt - 1500).toFixed(0)}м` : '';
+    if (!ok && MUST.includes(name) && assist) fails.push(`${id}: ${name} (засчитано: ${r.got.join(', ') || 'ничего'})`);
+    const extra = r.minIas < Infinity ? ` minV=${(r.minIas * 3.6).toFixed(0)}км/ч h=${r.minAlt.toFixed(0)}…${r.maxAlt.toFixed(0)}м` : '';
     console.log(`${ok ? ' ok ' : (MUST.includes(name) ? 'FAIL' : ' -- ')} ${name.padEnd(11)} → ${r.got.map((g) => TRICKS[g].name).join(', ') || '—'}${extra}${r.stalled ? ` срыв ${r.stalled.toFixed(1)}с` : ''}${r.ac.alive ? '' : ' РАЗБИЛСЯ'}`);
     if (verbose) console.log('      ' + r.log.join(' · '));
   }

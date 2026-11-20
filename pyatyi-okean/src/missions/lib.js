@@ -117,3 +117,31 @@ export function ridge(world, ax, az, bx, bz) {
 export const bearing = (ax, az, bx, bz) => wrapTau(Math.atan2(bx - ax, -(bz - az)));
 // точка по курсу hdg на дальности d от (x, z)
 export const offset = (x, z, hdg, d) => ({ x: x + Math.sin(hdg) * d, z: z - Math.cos(hdg) * d });
+
+// Полоса воды для глиссирования: точка (x, z) и курс heading, вдоль которого len метров открытой воды (глубже depth).
+export function findScoop(world, cx, cz, { rMax = 9000, step = 400, len = 2600, depth = -2 } = {}) {
+  const H = world.heightAt;
+  const clear = (x, z, h) => {
+    const dx = Math.sin(h), dz = -Math.cos(h);
+    for (let s = -len / 2; s <= len / 2; s += 130) {
+      const px = x + dx * s, pz = z + dz * s;
+      if (H(px, pz) > depth || H(px - dz * 120, pz + dx * 120) > depth || H(px + dz * 120, pz - dx * 120) > depth) return false;
+    }
+    return true;
+  };
+  for (let r = 1200; r <= rMax; r += step) {
+    const n = Math.max(8, Math.round((6.28 * r) / step));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 6.283;
+      const x = cx + Math.sin(a) * r, z = cz - Math.cos(a) * r;
+      if (H(x, z) > depth) continue;
+      // курс поперёк направления на центр — проход мимо берега, а не в него
+      for (let k = 0; k < 6; k++) {
+        const h = wrapTau(a + Math.PI / 2 + (k % 2 ? -1 : 1) * Math.floor((k + 1) / 2) * 0.35);
+        if (clear(x, z, h)) return { x, z, heading: h };
+      }
+    }
+  }
+  const w = findWater(world, cx, cz);
+  return { x: w.x, z: w.z, heading: 0 };
+}
