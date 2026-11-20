@@ -108,13 +108,13 @@ export function createSky(G, world) {
           float s64 = s8 * s8; s64 *= s64; s64 *= s64;
           col += uGlow * uSkyP.y * (s8 * 0.16 + s64 * 0.3 + pow(s64, 6.0) * 0.5) * (0.35 + 0.65 * above);
           float disc = smoothstep(0.99955, 0.99972, sd);
-          col = mix(col, uSunDisc, disc * above);
+          col += uSunDisc * disc * above;
           float md = max(dot(d, uMoonDir), 0.0);
           float m8 = md * md; m8 *= m8; m8 *= m8;
           float m64 = m8 * m8; m64 *= m64; m64 *= m64;
           float mdisc = smoothstep(0.99975, 0.99985, md);
           col += uMoonCol * (mdisc * 1.1 + pow(m64, 5.0) * 0.22 + m64 * 0.05) * above;
-          col = mix(col, uCloudCol, uSkyP.z);
+          col = mix(col, hor, uSkyP.z);
           col += vec3(0.75, 0.8, 1.0) * uSkyP.w;
           gl_FragColor = vec4(col, 1.0);
           #include <colorspace_fragment>
@@ -248,14 +248,17 @@ export function createSky(G, world) {
     if (useMoon) {
       sun.color.copy(MOON_LIGHT);
       sun.intensity = moonInt;
-      sun.position.copy(moonDir);
-      env.lightDir.copy(moonDir);
+      _v.copy(moonDir);
+      if (_v.y < 0.5) { const hl = Math.hypot(_v.x, _v.z) || 1; _v.x *= 0.866 / hl; _v.z *= 0.866 / hl; _v.y = 0.5; }
+      sun.position.copy(_v);
+      env.lightDir.copy(_v);
     } else {
       sun.color.copy(cSun);
       sun.intensity = sunInt;
       // у самого горизонта свет не должен быть строго сбоку — приподнимем на пару градусов
+      // «художественный» подъём света: при низком солнце равнина всё равно тепло освещена, а склоны дают контраст
       _v.copy(sunDir);
-      if (_v.y < 0.05) { _v.y = 0.05; _v.normalize(); }
+      if (_v.y < 0.42) { const hl = Math.hypot(_v.x, _v.z) || 1; _v.x *= 0.9075 / hl; _v.z *= 0.9075 / hl; _v.y = 0.42; }
       sun.position.copy(_v);
       env.lightDir.copy(_v);
     }

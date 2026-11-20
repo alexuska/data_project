@@ -57,11 +57,11 @@ vec3 seaShade(vec3 body, vec3 sp, vec3 V, float dist) {
   vec4 t3 = texture2D(uSeaTex, sp.xz * (1.0 / 5200.0) + uTime * vec2(0.0011, -0.0007));
   float nearF = 1.0 - smoothstep(250.0, 2200.0, dist);
   float midF = 1.0 - smoothstep(4000.0, 22000.0, dist);
-  vec2 nxz = ((t1.rg - 0.5) * nearF * 0.55 + (t2.rg - 0.5) * midF * 0.5 + (t3.rg - 0.5) * 0.16) * uSeaP.x;
+  vec2 nxz = ((t1.rg - 0.5) * nearF * 0.3 + (t2.rg - 0.5) * midF * 0.12 + (t3.rg - 0.5) * 0.045) * uSeaP.x;
   vec3 N = normalize(vec3(nxz.x, 1.0, nxz.y));
-  float ndv = max(dot(-V, N), 0.0);
+  float ndv = clamp(-V.y + (N.x * V.x + N.z * V.z) * -0.25, 0.0, 1.0);
   float fres = pow(1.0 - ndv, 4.0);
-  vec3 col = body * (1.0 + ((t2.b - 0.5) * 0.3 * midF + (t3.b - 0.5) * 0.22 + (t1.b - 0.5) * 0.2 * nearF) * uSeaP.x);
+  vec3 col = body * (1.0 + ((t2.b - 0.5) * 0.07 * midF + (t3.b - 0.5) * 0.05 + (t1.b - 0.5) * 0.1 * nearF) * uSeaP.x);
   vec3 R = reflect(V, N);
   R.y = abs(R.y);
   vec3 sky = mix(wfogColor(R), uZenith, pow(clamp(R.y, 0.0, 1.0), 0.55));
@@ -119,8 +119,8 @@ const FRAG_MAIN = /* glsl */ `
     vec3 sp = cameraPosition + wfd * tS;
     float wob = sin(uTime * 0.7 + sp.x * 0.021 + sp.z * 0.017) * 0.5 + 0.5;
     if (depth > 0.0) {
-      float op = 1.0 - exp(-depth * 0.2);
-      vec3 body = mix(uSeaShallow, uSeaDeep, smoothstep(0.5, 27.0, depth));
+      float op = 1.0 - exp(-depth * 0.26);
+      vec3 body = mix(uSeaShallow, uSeaDeep, smoothstep(0.5, 21.0, depth));
       vec3 bed = gl_FragColor.rgb * mix(vec3(1.0), uSeaShallow * 1.5, clamp(depth * 0.7, 0.0, 1.0));
       vec3 w = seaShade(mix(bed, body, op), sp, wV, wfl * tS);
       float foam = smoothstep(0.9 + wob * 0.8, 0.0, depth) * 0.9;

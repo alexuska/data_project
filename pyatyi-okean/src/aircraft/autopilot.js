@@ -7,6 +7,7 @@
 //   apFlyTo(ac, { x, y, z, speed? }, dt) -> расстояние до точки, м
 //   apTakeoff(ac, dt, opts?) -> 'roll' | 'rotate' | 'climb' | 'done'
 //   apLand(ac, target, dt, opts?) -> 'approach' | 'final' | 'flare' | 'rollout' | 'stopped' | 'goaround'
+//        opts: { world? — если передать G.world, схема захода не опускается ниже рельефа; glide? — угол глиссады, рад }
 //        target — результат world.runwayStart(...) ({x, y, z, heading, airport, runway}), либо аэродром, либо { airport, runway, heading? }
 //   apFollow(ac, leader, { x: вправо, y: вверх, z: назад }, dt) -> расстояние до места в строю, м
 //   apPursue(ac, target, dt, opts?) -> { dist, off, closure, inCone }  — нос на упреждённую точку (target: { pos, vel? })
@@ -233,6 +234,8 @@ export function apLand(ac, tgt, dt, opts) {
   const hFaf = L.elev + gearH + (L.df + L.aim) * tanG;
   const trk = ac.gs > 8 ? Math.atan2(ac.vel.x, -ac.vel.z) : ac.heading;
   const crab = clamp(wrapPi(ac.heading - trk), -0.5, 0.5);
+  // если передан мир — не снижаемся ниже рельефа по курсу (горы рядом со схемой захода)
+  const floor = opts && opts.world && L.phase !== 'flare' && L.phase !== 'rollout' && L.phase !== 'stopped' ? apTerrainFloor(ac, opts.world, 90, 26) : -1e9;
   clear(_h2);
 
   if (L.phase === 'approach' || L.phase === 'goaround') {
@@ -241,7 +244,7 @@ export function apLand(ac, tgt, dt, opts) {
       L.ga += dt;
       if (spec.retract && ac.vs > 1) ac.gearDown = false;
       ac.flaps = spec.flaps ? 0.5 : 0;
-      _h2.heading = L.hdg + crab; _h2.alt = hFaf; _h2.speed = 1.3 * vApp; _h2.bankMax = 15 * DEG;
+      _h2.heading = L.hdg + crab; _h2.alt = Math.max(hFaf, floor); _h2.speed = 1.3 * vApp; _h2.bankMax = 15 * DEG;
       apHold(ac, _h2, dt);
       c.throttle = 1;
       if (L.ga > 12 && ac.alt > L.elev + 60) { L.phase = 'approach'; L.side = 0; }
@@ -256,7 +259,7 @@ export function apLand(ac, tgt, dt, opts) {
       const px = L.tx - L.dx * sI + -L.dz * latI, pz = L.tz - L.dz * sI + L.dx * latI;
       const dist = Math.hypot(px - ac.pos.x, pz - ac.pos.z);
       _h2.heading = Math.atan2(px - ac.pos.x, -(pz - ac.pos.z)) + crab;
-      _h2.alt = hFaf;
+      _h2.alt = Math.max(hFaf, floor);
       _h2.speed = dist > 2.5 * L.df ? Math.min(spec.vCruise, 1.9 * vApp) : 1.35 * vApp;
       if (dist < 2.5 * L.df) ac.flaps = spec.flaps ? 0.5 : 0;
       apHold(ac, _h2, dt);
@@ -274,10 +277,11 @@ export function apLand(ac, tgt, dt, opts) {
     _h2.bankMax = s < 1200 ? 15 * DEG : 25 * DEG;
     // --- глиссада ---
     const sAim = s + L.aim;
-    const hT = L.elev + gearH + Math.min(sAim, L.df + L.aim) * tanG;
+    let hT = L.elev + gearH + Math.min(sAim, L.df + L.aim) * tanG;
+    if (s > 0.35 * L.df && floor > hT) hT = floor;
     const onSlope = sAim < L.df + L.aim;
     const vsGs = onSlope ? -ac.gs * tanG : 0;
-    _h2.vs = clamp(vsGs + 0.3 * (hT - ac.alt), -Math.max(5, 0.16 * ac.tas), Math.max(2, 0.05 * ac.tas));
+    _h2.vs = clamp(vsGs + 0.3 * (hT - ac.alt), -Math.max(5, 0.16 * ac.tas), floor > ac.alt - 15 ? Math.max(4, 0.5 * spec.climb) : Math.max(2, 0.05 * ac.tas));
     // --- конфигурация и скорость ---
     const near = s < L.df * 1.15;
     if (near) { ac.gearDown = true; ac.flaps = spec.flaps ? 1 : 0; } else ac.flaps = spec.flaps ? 0.5 : 0;
@@ -372,8 +376,8 @@ export function apPursue(ac, target, dt, opts) {
   const lead = opts && opts.lead != null ? opts.lead : 850;
   if (lead > 0 && tv) {
     const tL = Math.min(dist0 / (lead + ac.tas), 3);
-    _d.addScaledVector(tv, tL).addScaledVector(ac.vel, -tL * 0); // цель уйдёт за время полёта снаряда
-    _d.y += 0.5 * G0 * tL * tL * 0.5; // и снаряд просядет
+    _d.addScaledVector(tv, tL); // цель уйдёт за время полёта снаряда
+    _d.y += 0.25 * G0 * tL * tL; // и снаряд немного просядет
   }
   const dist = _d.length() || 1;
   out.dist = dist0;
@@ -386,6 +390,7 @@ export function apPursue(ac, target, dt, opts) {
   _q.copy(ac.quat).invert();
   _l.copy(_d).applyQuaternion(_q); // в связанных осях: x вправо, y вверх, z назад
   const off = Math.atan2(Math.hypot(_l.x, _l.y), -_l.z);
+  const az = Math.atan2(_l.x, -_l.z); // азимут цели от носа (вправо +)
   out.off = off;
   out.inCone = off < 2.5 * DEG;
   _e.copy(_d).addScaledVector(_v, -_d.dot(_v));
@@ -409,14 +414,14 @@ export function apPursue(ac, target, dt, opts) {
   let rollErr = Math.atan2(_l.x, _l.y); // + — крениться вправо
   // малые ошибки — не крутим бочки ради полградуса
   const fine = smoothstep(1.5 * DEG, 6 * DEG, offV);
-  if (fine < 1 && pullUp === 0) rollErr = rollErr * fine + wrapPi(clamp(Math.atan2(_l.x, 1) * 2, -0.6, 0.6) - ac.bank * 0) * (1 - fine) * 0.5;
+  if (fine < 1 && pullUp === 0) rollErr = rollErr * fine + clamp(2 * Math.atan(_l.x), -0.6, 0.6) * (1 - fine) * 0.5;
   const rm = ac.ctl.rollMax > 0.05 ? ac.ctl.rollMax : spec.rollRate;
   c.roll = clamp((3.2 * rollErr) / rm, -1, 1);
   // тянем, только когда подъёмная сила смотрит куда надо
   const align = Math.cos(clamp(rollErr, -Math.PI / 2, Math.PI / 2));
   const n = Math.abs(rollErr) < 1.2 ? Math.max(nTot * align, 0.4) : 0.4;
   c.pitch = pitchForG(ac, clamp(n, -1, gMax));
-  c.yaw = clamp(-_l.x * 0 + (offV < 8 * DEG ? Math.atan2((_d.applyQuaternion(_q)).x, -_d.z) * 4 : 0), -1, 1);
+  c.yaw = offV < 8 * DEG ? clamp(4 * az, -1, 1) : 0; // точная доводка педалями
   // скорость: не теряем энергию в вираже, не проскакиваем цель
   const vCorner = spec.vStall * Math.sqrt(spec.maxG) * 0.95;
   const range = (opts && opts.range) || 350;
@@ -432,8 +437,8 @@ export function apPursue(ac, target, dt, opts) {
 export function apTerrainFloor(ac, world, margin = 150, seconds = 20) {
   const h = world.heightAt || ((x, z) => world.groundAt(x, z).y);
   let top = h(ac.pos.x, ac.pos.z);
-  for (let i = 1; i <= 4; i++) {
-    const t = (seconds * i) / 4;
+  for (let i = 1; i <= 8; i++) {
+    const t = (seconds * i) / 8;
     const y = h(ac.pos.x + ac.vel.x * t, ac.pos.z + ac.vel.z * t);
     if (y > top) top = y;
   }

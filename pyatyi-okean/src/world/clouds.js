@@ -90,33 +90,34 @@ export function createClouds(G, world) {
     const m = new THREE.Mesh(
       deckGeo,
       new THREE.ShaderMaterial({
-        uniforms: u, transparent: true, depthWrite: false, fog: false, side: side > 0 ? THREE.FrontSide : THREE.BackSide,
+        uniforms: u, transparent: true, depthWrite: true, fog: false, side: side > 0 ? THREE.FrontSide : THREE.BackSide,
         vertexShader: /* glsl */ `
           uniform float uY; uniform float uAmp; uniform float uSide; uniform vec2 uOff;
-          varying vec3 vWPos; varying float vEdge;
+          varying vec3 vWPos; varying float vEdge; varying float vH;
           float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
           float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
             return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
           void main() {
             vec2 snap = floor(cameraPosition.xz / ${CELLD.toFixed(1)}) * ${CELLD.toFixed(1)};
             vec2 xz = position.xz + snap;
-            vec2 q = (xz + uOff) / 5200.0;
-            float n = vn(q) * 0.62 + vn(q * 2.7 + 9.1) * 0.38;
-            float y = uY + (uSide > 0.0 ? n * n * uAmp : -n * uAmp * 0.35);
+            vec2 q = (xz + uOff) / 3600.0;
+            float n = vn(q) * 0.6 + vn(q * 2.3 + 9.1) * 0.4;
+            vH = n;
+            float y = uY + (uSide > 0.0 ? n * n * uAmp : -n * uAmp * 0.6);
             vWPos = vec3(xz.x, y, xz.y);
             vEdge = length(position.xz) / ${(CELLD * SEG * 0.5).toFixed(1)};
             gl_Position = projectionMatrix * viewMatrix * vec4(vWPos, 1.0);
           }`,
         fragmentShader: /* glsl */ `
           uniform float uSide; uniform float uAlpha; uniform vec3 uSun; uniform vec3 uAmb; uniform vec3 uLDir;
-          varying vec3 vWPos; varying float vEdge;
+          varying vec3 vWPos; varying float vEdge; varying float vH;
           ${FOG_PARS}
           void main() {
             vec3 N = normalize(cross(dFdx(vWPos), dFdy(vWPos)));
             if (N.y * uSide < 0.0) N = -N;
             vec3 col;
-            if (uSide > 0.0) col = uAmb * (0.75 + 0.25 * N.y) + uSun * (0.25 + 0.75 * max(dot(N, uLDir), 0.0));
-            else col = uAmb * (0.42 + 0.2 * abs(N.y)) + uSun * 0.04;
+            if (uSide > 0.0) col = (uAmb * (0.7 + 0.3 * N.y) + uSun * (0.12 + 1.5 * max(dot(N, uLDir), 0.0))) * (0.62 + 0.5 * vH);
+            else col = uAmb * (0.3 + 0.38 * vH + 0.1 * abs(N.y)) + uSun * 0.03;
             vec3 wfd = vWPos - cameraPosition; float d = length(wfd);
             col = mix(col, wfogColor(wfd / d), wfogAmount(vWPos, cameraPosition, d));
             gl_FragColor = vec4(col, uAlpha * (1.0 - smoothstep(0.8, 0.98, vEdge)));
@@ -193,7 +194,7 @@ export function createClouds(G, world) {
     deckTop.visible = deckBot.visible = deck > 0.02;
     if (deckTop.visible) {
       const ut = deckTop.material.uniforms, ub = deckBot.material.uniforms;
-      ut.uY.value = wx.deckTop - 120; ut.uAmp.value = 420;
+      ut.uY.value = wx.deckTop - 200; ut.uAmp.value = 760;
       ub.uY.value = wx.deckBase + 40; ub.uAmp.value = 260;
       const alpha = smoothstep(0.02, 0.8, deck);
       ut.uAlpha.value = ub.uAlpha.value = alpha;
@@ -202,7 +203,7 @@ export function createClouds(G, world) {
       const fullSun = env.under < 0.98 ? env.sunIntensity / Math.max(0.05, 1 - env.under * 0.9) : 0;
       deckU.uSun.value.copy(env.sunColor).multiplyScalar(Math.min(3.2, fullSun) * 0.3);
       deckU.uAmb.value.copy(cAmb).multiplyScalar(dk);
-      deckU.uLDir.value.copy(env.lightDir);
+      deckU.uLDir.value.copy(env.night > 0.5 ? env.lightDir : world.sunDir); if (deckU.uLDir.value.y < 0.16) { deckU.uLDir.value.y = 0.16; deckU.uLDir.value.normalize(); }
     }
   }
   const _t = new THREE.Color();

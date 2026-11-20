@@ -108,6 +108,23 @@ export class Builder {
     });
     for (const f of fs) this.tri(pv[f[0]], pv[f[1]], pv[f[2]], col);
   }
+  // брус квадратного сечения между двумя точками
+  beam(a, b, w, col) {
+    let dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    const l = Math.hypot(dx, dy, dz) || 1;
+    dx /= l; dy /= l; dz /= l;
+    // n1 = d × up (или ось x для вертикали), n2 = d × n1
+    let n1x = -dz, n1y = 0, n1z = dx;
+    const nl = Math.hypot(n1x, n1z);
+    if (nl < 1e-4) { n1x = 1; n1z = 0; } else { n1x /= nl; n1z /= nl; }
+    const n2x = dy * n1z - dz * n1y, n2y = dz * n1x - dx * n1z, n2z = dx * n1y - dy * n1x;
+    const h = w / 2;
+    const cs = [[1, 1], [-1, 1], [-1, -1], [1, -1]].map(([p, q]) => [(n1x * p + n2x * q) * h, (n1y * p + n2y * q) * h, (n1z * p + n2z * q) * h]);
+    for (let i = 0; i < 4; i++) {
+      const c0 = cs[i], c1 = cs[(i + 1) % 4];
+      this.quad([a[0] + c0[0], a[1] + c0[1], a[2] + c0[2]], [a[0] + c1[0], a[1] + c1[1], a[2] + c1[2]], [b[0] + c1[0], b[1] + c1[1], b[2] + c1[2]], [b[0] + c0[0], b[1] + c0[1], b[2] + c0[2]], col);
+    }
+  }
   get count() { return this.p.length / 9; }
   build() {
     const pos = new Float32Array(this.p), n = pos.length;

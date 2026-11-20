@@ -93,9 +93,9 @@ export function createAirports(G, world, mats, lights) {
     for (const e of [-1, 1]) {
       M.setFrame(rw.cx, elev + 0.14, rw.cz, rw.heading + (e > 0 ? Math.PI : 0));
       // «зебра» порога
-      const nk = Math.floor((W - 8) / 7);
-      const pitch = (W - 8) / (nk * 2);
-      for (let k = 0; k < nk; k++) for (const sv of [-1, 1]) M.rect(sv * (2.5 + pitch * (k + 0.5) * 2 * 0.5 + k * pitch * 0), L / 2 - 22, pitch * 0.62, 30, 0, C.white);
+      const nk = Math.max(2, Math.floor((W / 2 - 4) / 3.6));
+      const pitch = (W / 2 - 4) / nk;
+      for (let k = 0; k < nk; k++) for (const sv of [-1, 1]) M.rect(sv * (2 + pitch * (k + 0.5)), L / 2 - 22, pitch * 0.6, 30, 0, C.white);
       // цифры
       const name = rw.name.split('/')[e < 0 ? 0 : 1];
       if (name && /^\d+$/.test(name)) drawNumber(M, name, 0, L / 2 - 62, big ? 24 : 17, 0, C.white);

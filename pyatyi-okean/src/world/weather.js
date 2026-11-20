@@ -61,8 +61,11 @@ export function createWeather(G, world) {
     new THREE.ShaderMaterial({
       uniforms: pu, transparent: true, depthWrite: false, fog: false,
       vertexShader: PV,
-      fragmentShader: /* glsl */ `uniform vec3 uCol; varying float vA; void main() { gl_FragColor = vec4(uCol, vA * 0.42); #include <colorspace_fragment>
-      }`,
+      fragmentShader: /* glsl */ `uniform vec3 uCol; varying float vA;
+        void main() {
+          gl_FragColor = vec4(uCol, vA * 0.42);
+          #include <colorspace_fragment>
+        }`,
     })
   );
   const snowGeo = new THREE.BufferGeometry();
@@ -75,8 +78,12 @@ export function createWeather(G, world) {
     new THREE.ShaderMaterial({
       uniforms: pu, transparent: true, depthWrite: false, fog: false,
       vertexShader: PV,
-      fragmentShader: /* glsl */ `uniform vec3 uCol; varying float vA; void main() { float r = length(gl_PointCoord - 0.5); gl_FragColor = vec4(uCol * 1.2, vA * smoothstep(0.5, 0.2, r) * 0.9); #include <colorspace_fragment>
-      }`,
+      fragmentShader: /* glsl */ `uniform vec3 uCol; varying float vA;
+        void main() {
+          float r = length(gl_PointCoord - 0.5);
+          gl_FragColor = vec4(uCol * 1.2, vA * smoothstep(0.5, 0.2, r) * 0.9);
+          #include <colorspace_fragment>
+        }`,
     })
   );
   for (const o of [rain, snow]) { o.frustumCulled = false; o.renderOrder = 30; o.visible = false; world.group.add(o); }

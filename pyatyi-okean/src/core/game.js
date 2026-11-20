@@ -178,7 +178,14 @@ G.step = function (dt) {
 
 // события игрока, которые ведёт ядро
 G.bus.on('ac:touchdown', (e) => {
-  if (e.ac === G.player && G.flight) G.flight.touchdowns.push({ t: G.flight.time, vs: e.vs, speed: e.speed, surface: e.surface, airportId: e.airport ? e.airport.id : null, across: e.across, along: e.along });
+  if (e.ac === G.player && G.flight) {
+    G.flight.touchdowns.push({
+      t: G.flight.time, vs: e.vs, speed: e.speed, surface: e.surface, airportId: e.airport ? e.airport.id : null,
+      runway: e.runway ? e.runway.name : null, across: e.across, along: e.along,
+      bounce: e.bounce ?? 0, gforce: e.gforce ?? null, bank: e.bank ?? null, pitch: e.pitch ?? null, drift: e.drift ?? null,
+      damage: e.damage ?? 0, hard: !!e.hard, arrested: !!e.arrested, gearDown: e.gearDown ?? true,
+    });
+  }
 });
 G.bus.on('ac:takeoff', (e) => {
   if (e.ac === G.player && G.flight) G.flight.takeoffs++;

@@ -6,17 +6,17 @@ import { GRID_N, CELL, HALF, ISLE, arcticAt, tropicAt, snowLineAt, treeLineAt, f
 import { AIRPORTS, LAKE, POI_BY_ID } from './layout.js';
 import { patchMaterial, lin } from './env.js';
 
-const CUT = -28; // глубже — клетки не рисуем (там уже чистый цвет моря)
+const CUT = -22; // глубже — клетки не рисуем (там уже чистый цвет моря)
 const CHUNKS = 8;
 
 const PAL = {
   sand: lin('#e2cf9e'), sandT: lin('#f3e6c2'), sandV: lin('#4f4a46'), sandN: lin('#aeb4b6'),
   grass: lin('#86b356'), grassT: lin('#6fc058'), grassN: lin('#8f9870'), grassDry: lin('#a3ae62'),
-  upland: lin('#7e9c56'), alpine: lin('#97a070'),
+  upland: lin('#7e9c56'), grassDeep: lin('#5f9a4c'), alpine: lin('#97a070'),
   forest: lin('#3d7040'), forestN: lin('#2f5a42'), forestT: lin('#2f8a48'),
   rock: lin('#8e857a'), rockDark: lin('#6a635d'), rockV: lin('#4c4542'), rockN: lin('#727a84'), lava: lin('#3d2b28'),
   snow: lin('#f1f5fb'), ice: lin('#d2e6f0'),
-  urban: lin('#b5aea3'), mown: lin('#8fb85c'),
+  urban: lin('#b5aea3'), mown: lin('#84ae5a'),
   fields: [lin('#d8c56c'), lin('#a98c5c'), lin('#93bf5c'), lin('#5f9548'), lin('#c2b25a')],
   seabed: lin('#c8bd94'), seabedRock: lin('#6f6a60'),
 };
@@ -39,7 +39,8 @@ function into(b, t) {
 export function buildTerrain(hf, group) {
   const N = GRID_N, V = hf.V, data = hf.data, isleG = hf.isle;
   const per = N / CHUNKS;
-  const mat = patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2 }), { shore: true });
+  const forest = (hf.forest = new Uint8Array(N * N));
+  const mat = patchMaterial(new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3 }), { shore: true });
   const meshes = [];
   const volc = POI_BY_ID.volcano;
   let tris = 0;
@@ -64,9 +65,12 @@ export function buildTerrain(hf, group) {
         // трава по высоте и климату
         mix3(PAL.grass, PAL.grassT, tro);
         if (arc > 0) into(PAL.grassN, arc);
-        into(PAL.grassDry, clamp((cell.rnd - 0.5) * 0.9, 0, 0.4));
+        into(PAL.grassDry, clamp((cell.rnd - 0.46) * 2.4, 0, 0.6));
+        into(PAL.grassDeep, clamp((0.44 - cell.rnd) * 2.6, 0, 0.55));
         into(PAL.upland, smoothstep(120, 420, h));
         into(PAL.alpine, smoothstep(cell.tl - 150, cell.tl + 60, h));
+        if (id === ISLE.KAMENNY) { into(PAL.grassDry, 0.45); into(cell.rnd > 0.5 ? PAL.rock : PAL.rockDark, clamp((cell.rnd - 0.3) * 2.2, 0.1, 0.8) * (1 - cell.fw * 0.6)); }
+        if (id === ISLE.ISLET && h > 25) into(PAL.rock, 0.5);
         if (cell.fld) { const fc = PAL.fields[cell.fld - 1]; into(fc, 0.92); }
         if (cell.f > 0.02) {
           const conifer = clamp(arc + smoothstep(350, 650, h), 0, 1);
@@ -83,16 +87,16 @@ export function buildTerrain(hf, group) {
         }
         // скалы на крутых склонах
         const rk = smoothstep(0.15, 0.3, slope);
-        if (rk > 0) into(id === ISLE.VOLCANO ? PAL.rockV : arc > 0.5 ? PAL.rockN : cell.rnd > 0.6 ? PAL.rockDark : PAL.rock, rk);
+        if (rk > 0) { into(id === ISLE.VOLCANO ? PAL.rockV : arc > 0.5 ? PAL.rockN : PAL.rock, rk); if (id !== ISLE.VOLCANO) into(PAL.rockDark, rk * smoothstep(0.42, 0.7, cell.rnd) * 0.7); }
         // снег
         const sn = smoothstep(cell.sl - 50, cell.sl + 90, h) * (1 - smoothstep(0.34, 0.52, slope));
         if (sn > 0) into(hmin < 2.5 && arc > 0.5 ? PAL.ice : PAL.snow, sn);
       }
     }
     const k = 0.93 + 0.14 * jit;
-    out[o] = Math.min(65535, Math.sqrt(clamp(_col[0] * k, 0, 1)) * 65535);
-    out[o + 1] = Math.min(65535, Math.sqrt(clamp(_col[1] * k, 0, 1)) * 65535);
-    out[o + 2] = Math.min(65535, Math.sqrt(clamp(_col[2] * k, 0, 1)) * 65535);
+    out[o] = clamp(_col[0] * k, 0, 1) * 65535;
+    out[o + 1] = clamp(_col[1] * k, 0, 1) * 65535;
+    out[o + 2] = clamp(_col[2] * k, 0, 1) * 65535;
   }
 
   for (let cj = 0; cj < CHUNKS; cj++) {
@@ -142,6 +146,7 @@ export function buildTerrain(hf, group) {
             cell.fw = 0;
             for (const a of landAirports) { const w = flatWeight(a, mx, mz); if (w > cell.fw) cell.fw = w; }
             cell.f = forestAt(mx, mz, mh, sl, cell.isle);
+            forest[j * N + i] = cell.f * 255;
             cell.urb = urbanAt(mx, mz);
             cell.fld = cell.urb > 0.3 || cell.fw > 0.5 || cell.f > 0.35 ? 0 : fieldAt(mx, mz, mh, sl, cell.isle);
             cell.sl = snowLineAt(mx, mz);

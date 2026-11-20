@@ -92,6 +92,9 @@ const isles = [
         const ob = bump((x - P.observatory.x) / 900, (z - P.observatory.z) / 900);
         if (ob > 0) h = lerp(h, 1090 + 60 * ob, ob * 0.9);
       }
+      // под городом — ровнее
+      const cw = 1 - smoothstep(1300, 2700, Math.hypot(x - P.city_yasny.x, z - P.city_yasny.z));
+      if (cw > 0) h = lerp(h, shore(d, 340, 15), cw * 0.9);
       return h;
     },
   },
@@ -249,7 +252,7 @@ function applyAirports(x, z, h) {
       const gn = a.id === 'gnezdo';
       const far = gn ? 4200 : 9000;
       if (s > far) continue;
-      const w = gn ? 150 + 0.1 * s : 260 + 0.24 * s;
+      const w = gn ? 230 + 0.2 * s : 260 + 0.24 * s;
       if (ac > w * 2.2) continue;
       let lim;
       if (gn) lim = a.elevation - clamp((s - 80) * 0.95, -6, 330) - Math.max(0, s - 500) * 0.05;
@@ -273,7 +276,7 @@ const lakeB = B(LAKE.cx, LAKE.cz, LAKE.a, LAKE.b, 45);
 export function lakeInside(x, z) {
   // >0 — внутри чаши (м от берега); учитывает линию плотины
   const al = (x - LAKE.damX) * LAKE.ax + (z - LAKE.damZ) * LAKE.az;
-  if (al < 0) return -1e9;
+  if (al < 30) return -1e9;
   return blobD(x, z, lakeB) + (fbm2(x / 500, z / 500, 2, 91) - 0.5) * 260;
 }
 function applyLake(x, z, h) {

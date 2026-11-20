@@ -24,7 +24,9 @@ export function createWorld(G) {
   group.name = 'world';
   G.scene.add(group);
 
+  const T0 = performance.now();
   const hf = buildHeightfield();
+  const T1 = performance.now();
   const heightAt = hf.heightAt;
   const carrierAp = AIRPORT_BY_ID.carrier, carrierRw = carrierAp.runways[0];
   const cd = headingVec(CARRIER.heading);
@@ -135,6 +137,7 @@ export function createWorld(G) {
   };
 
   const terrain = buildTerrain(hf, group);
+  const T2 = performance.now();
   createSea(group);
   const weather = createWeather(G, world);
   const sky = createSky(G, world);
@@ -143,7 +146,7 @@ export function createWorld(G) {
   const airports = createAirports(G, world, mats, lights);
   const props = createProps(G, world, hf, mats, lights);
   lights.build();
-  world._debug = { hf, terrain, sky, clouds, weather, lights, mats };
+  world._debug = { hf, terrain, sky, clouds, weather, lights, mats, timing: { heightfield: Math.round(T1 - T0), terrain: Math.round(T2 - T1), rest: Math.round(performance.now() - T2) } };
 
   const TREE_R = { low: [6500, 8500], medium: [10500, 13000], high: [15000, 18000] };
   let level = G.quality.level;

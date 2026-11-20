@@ -1,6 +1,7 @@
 {
   "name": "pyatyi-okean",
   "private": true,
+  "type": "module",
   "version": "1.0.0",
   "description": "Пятый океан — 3D low-poly авиационная игра для телефона и планшета",
   "scripts": {

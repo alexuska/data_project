@@ -95,7 +95,7 @@ export function createSea(group) {
     const a = (i / n) * Math.PI * 2;
     let u = Math.cos(a) * (LAKE.a + 420), v = Math.sin(a) * (LAKE.b + 420); // вдоль оси / поперёк
     let al = 1450 + u; // от плотины
-    if (al < 6) al = 6;
+    if (al < 36) al = 36;
     pts.push(LAKE.damX + LAKE.ax * al - LAKE.az * v, LAKE.damZ + LAKE.az * al + LAKE.ax * v);
   }
   const lp = [];
