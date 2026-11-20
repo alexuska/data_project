@@ -278,6 +278,9 @@ export function createAI(G) {
         continue;
       }
       a.t += dt;
+      // боевые поведения ведёт модуль боя (ai-combat.js); если цели нет — обычное поведение ниже
+      const fight = a.requested === 'attack' || a.requested === 'flee' || ac.hp <= 0;
+      if (fight && G.combat && G.combat.pilot && G.combat.pilot(ac, a, dt)) continue;
       switch (a.behavior) {
         case 'route': case 'patrol': stepRoute(ac, a, dt); break;
         case 'land': stepLand(ac, a, dt); break;
