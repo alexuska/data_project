@@ -3,7 +3,8 @@
 //   active, mode ('hold' | 'nav' | 'approach' | null), destination ({ airportId, name, x, z } | null)
 //   engage(mode, opts?) -> bool   opts: { airportId?, silent? };   disengage(msg?, kind?);   setDestination(airportId | null)
 // Сверх контракта: target { heading, alt, speed } (уставки), athr (автомат тяги), adjust('hdg'|'alt'|'spd', ±1),
-//   approach (состояние автопосадки), taxi (маршрут руления), towerAction() / requestTower(), checklist { text } ,
+//   approach (состояние автопосадки), taxi (маршрут руления), towerAction() / requestTower(), checklist { text } (подсказки
+//   чек-листа — через G.hud.toast, только в свободном полёте; выключаются G.profile.settings.checklists = false),
 //   approachAirport(), status() — строки для панели. Событие шины 'autoflight:changed' { active, mode }.
 // Регуляторы — готовые из aircraft/autopilot.js (apHold, apFlyTo, apLand, apTerrainFloor); ИИ-самолёты не трогаем.
 import { apHold, apFlyTo, apLand, apTerrainFloor, apReset } from '../aircraft/autopilot.js';
@@ -26,7 +27,7 @@ export function createAutoflight(G) {
   // связь с вышкой
   const tw = { taxi: false, takeoff: false, landing: null, pendT: 0, pendA: null, pendRw: null, lastReq: -1e9 };
   // чек-листы: текущий пункт, время показа, когда можно следующий, показанные в этой фазе
-  const ck = { cur: null, t: 0, next: 0, shown: {}, acc: 0, landed: false };
+  const ck = { cur: null, t: 0, next: 0, shown: {}, acc: 0, landed: false, said: 0, n: 0 };
 
   const cs = () => G.profile.callsign || 'Корвет';
   const toast = (text, kind = 'info') => { if (G.hud && G.hud.toast) G.hud.toast(text, kind); else G.bus.emit('ui:toast', { text, kind }); };
@@ -415,7 +416,7 @@ export function createAutoflight(G) {
       id: 'before_to',
       when: (p) => p.onGround && p.spec.flaps && p.surface === 'runway' && p.gs < 20 && Math.round(p.flaps * 2) === 0,
       done: (p) => !p.onGround || p.flaps >= 0.5,
-      text: () => 'Перед взлётом: закрылки 1 — кнопка «Закрылки»',
+      text: () => 'Перед взлётом: закрылки 1 (кнопка «Закрылки»)',
     },
     {
       id: 'after_to',
@@ -448,15 +449,21 @@ export function createAutoflight(G) {
     if (!on) { if (ck.cur) { ck.cur = null; changed(); } return; }
     if (ck.cur) {
       ck.t += h;
-      if (ck.cur.done(p) || ck.t > 30) { ck.cur = null; ck.next = simT + 20; changed(); }
-      else { const t = ck.cur.text(p); if (t !== af.checklist.text) { af.checklist.text = t; changed(); } }
+      if (ck.cur.done(p)) { toast('Чек-лист выполнен', 'good'); ck.cur = null; ck.next = simT + 20; changed(); }
+      else if (ck.t > 30) { ck.cur = null; ck.next = simT + 20; changed(); }
+      else {
+        // напоминание повторяется, пока пункт не выполнен (не чаще раза в 10 с, до трёх раз)
+        const t = ck.cur.text(p);
+        if (t !== af.checklist.text || (ck.t - ck.said > 10 && ck.n < 3)) { af.checklist.text = t; ck.said = ck.t; ck.n++; toast('Чек-лист · ' + t, 'warn'); }
+      }
       return;
     }
     if (simT < ck.next) return;
     for (const it of CHECK) {
       if (ck.shown[it.id] || !it.when(p)) continue;
-      ck.shown[it.id] = true; ck.cur = it; ck.t = 0;
+      ck.shown[it.id] = true; ck.cur = it; ck.t = 0; ck.said = 0; ck.n = 1;
       af.checklist.text = it.text(p);
+      toast('Чек-лист · ' + af.checklist.text, 'warn');
       changed();
       break;
     }

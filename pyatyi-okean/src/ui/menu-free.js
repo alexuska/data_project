@@ -3,6 +3,7 @@ import { esc, icon, fmtInt, mapHtml, segmented, KIND_NAMES, WEATHER, TIMES } fro
 import { getSpec, CATALOG } from '../aircraft/catalog.js';
 import { headingVec } from '../core/util.js';
 import * as N from '../systems/autoflight-nav.js';
+import { saveProfile } from '../core/save.js';
 
 const STARTS = [{ v: 'parking', label: 'Со стоянки' }, { v: 'runway', label: 'С полосы' }, { v: 'air', label: 'В воздухе' }];
 const START_NOTE = {
@@ -56,6 +57,7 @@ export function freeScreen(ctx) {
                 <div class="menu-chips menu-scroll-x" data-scroll="free-planes">${owned.map((s) => `<button type="button" class="menu-chip ${s.id === st.planeId ? 'is-on' : ''}" data-act="plane" data-v="${s.id}" data-sfx="ui_tick">${icon('plane', 16)}${esc(s.name)}</button>`).join('')}</div></div>
               <div class="menu-opt"><span class="menu-label">Старт</span>${segmented('start', starts, start)}</div>
               <p class="menu-free-desc">${esc(START_NOTE[start] || '')}</p>
+              <div class="menu-opt"><span class="menu-label">Подсказки</span>${segmented('checks', [{ v: 'on', label: 'Чек-листы' }, { v: 'off', label: 'Без подсказок' }], G.profile.settings.checklists === false ? 'off' : 'on')}</div>
               <div class="menu-opt"><span class="menu-label">Время</span>${segmented('tod', TIMES, st.tod, 'menu-seg--icons')}</div>
               <div class="menu-opt"><span class="menu-label">Погода</span>
                 <div class="menu-chips menu-scroll-x" data-scroll="free-weather">${WEATHER.map((w) => `<button type="button" class="menu-chip ${w.v === st.weather ? 'is-on' : ''}" data-act="weather" data-v="${w.v}" data-sfx="ui_tick">${icon(w.icon, 16)}${w.label}</button>`).join('')}</div></div>
@@ -71,6 +73,7 @@ export function freeScreen(ctx) {
       airport: (d) => { st.airportId = d.id; ctx.refresh(); },
       plane: (d) => { st.planeId = d.v; ctx.refresh(); },
       start: (d) => { st.start = d.v; ctx.refresh(); },
+      checks: (d) => { G.profile.settings.checklists = d.v !== 'off'; saveProfile(G.profile); ctx.refresh(); },
       tod: (d) => { st.tod = d.v; ctx.refresh(); },
       weather: (d) => { st.weather = d.v; ctx.refresh(); },
       fly: () => {

@@ -170,7 +170,7 @@ function tCheck() {
   G.player.flaps = 0.5;
   G.debug.advance(1, false);
   const gone = !G.autoflight.checkOn;
-  return { seen, gone, visible: !document.querySelector('.af-check').hidden || gone };
+  return { seen, gone };
 }
 
 (async () => {
