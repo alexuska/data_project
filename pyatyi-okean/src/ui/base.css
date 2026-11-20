@@ -1,0 +1,56 @@
+/* Пятый океан — единый визуальный мир игры (одна тёмная тема, намеренно).
+   Раскладка: холст на весь экран, поверх него слой #ui с учётом безопасных зон телефона. */
+:root {
+  color-scheme: dark;
+  /* палитра: ночное небо, тёплый горизонт, приборная кремовая шкала */
+  --night: #0b1626;        /* глубокий фон панелей */
+  --night-2: #13243a;      /* приподнятая поверхность */
+  --night-3: #1d3552;      /* границы, неактивные элементы */
+  --haze: #8fb4cc;         /* вторичный текст, небесная дымка */
+  --cream: #f4ecd8;        /* основной текст, шкалы приборов */
+  --dawn: #ff9a3d;         /* акцент: рассветный оранжевый */
+  --dawn-2: #ffc56b;       /* светлый акцент */
+  --signal: #ef4f3f;       /* опасность, противник */
+  --ok: #6fd08c;           /* норма, шасси выпущено */
+  --sky: #57b6d9;          /* информация, союзники, маршрут */
+  --glass: rgba(11, 22, 38, 0.62);     /* стекло панелей поверх 3D */
+  --glass-line: rgba(244, 236, 216, 0.16);
+  /* шрифты */
+  --f-display: "Oswald", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Golos Text", "Segoe UI", Roboto, system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  /* безопасные зоны */
+  --sa-t: env(safe-area-inset-top, 0px);
+  --sa-b: env(safe-area-inset-bottom, 0px);
+  --sa-l: max(16px, env(safe-area-inset-left, 0px));
+  --sa-r: max(16px, env(safe-area-inset-right, 0px));
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--cream);
+  font-family: var(--f-body);
+  font-size: 15px;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#app { position: fixed; inset: 0; overflow: hidden; background: var(--night); }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#ui {
+  position: absolute; inset: 0;
+  pointer-events: none;            /* слои сами включают pointer-events там, где нужно */
+  touch-action: none;
+  font-variant-numeric: tabular-nums;
+}
+#ui > * { position: absolute; inset: 0; pointer-events: none; }
+#ui button { font: inherit; color: inherit; touch-action: manipulation; }
+#ui button:focus-visible { outline: 2px solid var(--dawn-2); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  #ui * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

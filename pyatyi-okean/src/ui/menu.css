@@ -1,0 +1,5 @@
+.menu { pointer-events: none; }
+.menu-v0 { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; justify-content: center; padding: calc(var(--sa-t) + 16px) var(--sa-r) calc(var(--sa-b) + 16px) var(--sa-l); background: linear-gradient(90deg, rgba(11,22,38,.85), rgba(11,22,38,0) 70%); pointer-events: auto; }
+.menu-v0 h1 { font-family: var(--f-display); font-size: 44px; margin: 0; letter-spacing: .04em; text-transform: uppercase; }
+.menu-v0-list { display: flex; flex-wrap: wrap; gap: 8px; max-width: 560px; }
+.menu-v0 button { min-height: 44px; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--glass-line); background: var(--night-2); }

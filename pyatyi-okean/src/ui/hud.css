@@ -1,0 +1,4 @@
+.hud-v0-data { inset: auto; position: absolute; left: var(--sa-l); top: calc(var(--sa-t) + 10px); font-family: var(--f-mono); font-size: 13px; background: var(--glass); padding: 6px 10px; border-radius: 6px; }
+.hud-v0-obj { position: absolute; left: 50%; top: calc(var(--sa-t) + 44px); transform: translateX(-50%); font-family: var(--f-display); font-size: 16px; text-shadow: 0 1px 4px #000; }
+.hud-v0-toast { position: absolute; left: 50%; bottom: calc(var(--sa-b) + 24px); transform: translateX(-50%); font-size: 14px; text-shadow: 0 1px 4px #000; }
+.hud-v0-pause { position: absolute; right: var(--sa-r); top: calc(var(--sa-t) + 10px); width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--glass-line); background: var(--glass); pointer-events: auto; }

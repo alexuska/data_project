@@ -1,0 +1,16 @@
+{
+  "name": "pyatyi-okean",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Пятый океан — 3D low-poly авиационная игра для телефона и планшета",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node tools/physics-test.mjs"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0"
+  }
+}
