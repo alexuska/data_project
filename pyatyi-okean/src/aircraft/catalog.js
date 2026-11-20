@@ -16,7 +16,7 @@
 //  afterburner — есть форсаж (зона РУД > 0.9);  airbrake — есть тормозные щитки/интерцепторы (controls.airbrake)
 //  reverse — реверс тяги на пробеге (включается тормозом);  chute — площадь тормозного парашюта, м² (выпускается тормозом на пробеге)
 //  ground — может работать с грунта и садиться вне полосы;  carrierCapable — годен для палубы (гак держит любого, это флаг для заданий/ИИ)
-//  amphibian — садится на воду;  groundPitch — стояночный угол (рад) у самолётов с хвостовым колесом
+//  amphibian — садится на воду (hullHeight — высота ЦТ над водой на плаву);  bellyHeight — высота ЦТ над землёй на брюхе;  groundPitch — стояночный угол (рад) у самолётов с хвостовым колесом
 //  bankLimit / pitchLimit: [вверх, вниз] рад — мягкие ограничения при включённой помощи (лайнеры и транспортники)
 //  mCrit — число М начала волнового кризиса;  thrustLapse — падение тяги по скорости (доля на М = 1)
 //  seats / cargo (кг) / water (кг воды для тушения); guns/hardpoints — для боевых
@@ -56,7 +56,7 @@ export const CATALOG = [
   },
   {
     id: 'yak40', name: 'Як-40', fullName: 'Яковлев Як-40', year: 1966, role: 'civil', cls: 'airliner',
-    engine: 'jet', engines: 3, mass: 14500, wingArea: 70, span: 25, length: 20.4, thrust: 44100, thrustLapse: 0.55,
+    engine: 'jet', engines: 3, mass: 14500, wingArea: 70, span: 25, length: 20.4, thrust: 44100, thrustLapse: 0.75,
     vStall: 52, vMax: 153, vCruise: 140, vClimb: 95, maxG: 3, minG: -1, rollRate: 0.9, pitchRate: 0.6,
     fuel: 3000, burn: 1.75, gearHeight: 1.9, retract: true, flaps: true, flapLift: 0.5,
     ceiling: 8000, climb: 8, takeoffRun: 700, landingRun: 550,
@@ -65,7 +65,7 @@ export const CATALOG = [
   },
   {
     id: 'tu154', name: 'Ту-154', fullName: 'Туполев Ту-154М', year: 1968, role: 'civil', cls: 'airliner',
-    engine: 'jet', engines: 3, mass: 90000, wingArea: 201, span: 37.55, length: 47.9, thrust: 309000, thrustLapse: 0.5,
+    engine: 'jet', engines: 3, mass: 90000, wingArea: 201, span: 37.55, length: 47.9, thrust: 309000, thrustLapse: 0.6,
     vStall: 72, vMax: 264, vCruise: 250, vClimb: 150, maxG: 2.5, minG: -1, rollRate: 0.55, pitchRate: 0.35,
     fuel: 39000, burn: 17.5, gearHeight: 3.4, retract: true, flaps: true, flapLift: 0.75,
     ceiling: 12100, climb: 15, takeoffRun: 1300, landingRun: 1000,
@@ -74,18 +74,18 @@ export const CATALOG = [
   },
   {
     id: 'il76', name: 'Ил-76', fullName: 'Ильюшин Ил-76ТД', year: 1971, role: 'civil', cls: 'cargo',
-    engine: 'jet', engines: 4, mass: 150000, wingArea: 300, span: 50.5, length: 46.6, thrust: 471000, thrustLapse: 0.55,
+    engine: 'jet', engines: 4, mass: 150000, wingArea: 300, span: 50.5, length: 46.6, thrust: 471000, thrustLapse: 0.7,
     vStall: 68, vMax: 236, vCruise: 215, vClimb: 140, maxG: 2.3, minG: -0.8, rollRate: 0.45, pitchRate: 0.3,
-    fuel: 84000, burn: 25, gearHeight: 3.6, retract: true, flaps: true, flapLift: 0.8,
+    fuel: 84000, burn: 25, gearHeight: 3.6, bellyHeight: 2.65, retract: true, flaps: true, flapLift: 0.8,
     ceiling: 12000, climb: 10, takeoffRun: 1400, landingRun: 900,
     ground: true, reverse: true, airbrake: true, bankLimit: 47 * DEG, pitchLimit: [22 * DEG, 15 * DEG], mCrit: 0.77, cargo: 50000, water: 42000,
     desc: 'Тяжёлый транспортник-труженик: работает с грунта, со льда и в Антарктиде. Двадцать колёс шасси держат его на раскисшей полосе, а в 1975 году на Ил-76 установили 25 мировых рекордов. В пожарном варианте сбрасывает 42 тонны воды за заход.',
   },
   {
     id: 'be200', name: 'Бе-200', fullName: 'Бериев Бе-200ЧС «Альтаир»', year: 1998, role: 'civil', cls: 'amphibian',
-    engine: 'jet', engines: 2, mass: 36000, wingArea: 117.4, span: 32.8, length: 32, thrust: 147000, thrustLapse: 0.62,
+    engine: 'jet', engines: 2, mass: 36000, wingArea: 117.4, span: 32.8, length: 32, thrust: 147000, thrustLapse: 0.75,
     vStall: 56, vMax: 194, vCruise: 165, vClimb: 110, maxG: 2.6, minG: -1, rollRate: 0.6, pitchRate: 0.4,
-    fuel: 12000, burn: 5.6, gearHeight: 2.6, hullHeight: 1.7, retract: true, flaps: true, flapLift: 0.6,
+    fuel: 12000, burn: 5.6, gearHeight: 2.6, hullHeight: 1.15, retract: true, flaps: true, flapLift: 0.6,
     ceiling: 8000, climb: 13, takeoffRun: 700, landingRun: 950,
     amphibian: true, reverse: true, airbrake: true, bankLimit: 47 * DEG, pitchLimit: [25 * DEG, 17 * DEG], mCrit: 0.7, seats: 44, water: 12000,
     desc: 'Реактивная летающая лодка-амфибия. Набирает 12 тонн воды за 14 секунд глиссирования и тушит лесные пожары по всему миру. Двигатели подняты над крылом, чтобы в них не попадали брызги, а взлетать умеет и с бетона, и с морской волны.',

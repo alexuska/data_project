@@ -711,7 +711,7 @@ export function stepAircraft(ac, env, dt) {
     if (gp > 0) gp *= 1 - clamp((ias - 0.3 * vS) / (0.3 * vS), 0, 1) * (sP > 0.3 ? 0 : 1); // хвост поднимается на разбеге
     if (floatW) gp = 0.035 + 0.05 * Math.exp(-((gs / vS - 0.4) * (gs / vS - 0.4)) / 0.05);
     if (belly) gp = 0;
-    const pTarget = belly ? 0 : gp + Math.max(0, sP) * auth * (aero.rotMax - gp);
+    const pTarget = belly ? 0 : gp + Math.min(1, Math.max(0, sP) * 1.6) * auth * (aero.rotMax - gp);
     let pitchG = _e.x - ac._slopePitch;
     if (pitchG < pTarget) pitchG = Math.min(pTarget, pitchG + (pitchG < gp ? 0.6 : spec.pitchRate * 0.45 * auth + 0.02) * dt);
     else pitchG = Math.max(pTarget, pitchG - (0.1 + 0.35 * (1 - auth) + 0.3 * Math.max(0, -sP)) * dt);

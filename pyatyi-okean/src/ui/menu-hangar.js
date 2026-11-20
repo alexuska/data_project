@@ -65,8 +65,25 @@ function createShowcase(G) {
   function removeModel() {
     if (!model) return;
     G.scene.remove(model);
-    model.traverse((o) => { if (o.geometry && !o.geometry.userData?.shared) o.geometry.dispose(); });
+    try {
+      if (typeof model.userData.dispose === 'function') model.userData.dispose();
+      else model.traverse((o) => { if (o.geometry && !o.geometry.userData?.shared) o.geometry.dispose(); });
+    } catch (e) { /* ignore */ }
     model = null;
+  }
+  // самолёт на стоянке «живой»: шасси выпущено, огни по времени суток
+  const parked = { throttle: 0, gearPos: 1, gearDown: true, flapsPos: 0, flaps: 0, airbrake: 0, engineOn: false, onGround: true, alive: true, controls: { pitch: 0, roll: 0, yaw: 0, throttle: 0, brake: 1, airbrake: 0 } };
+  let raf = 0, last = 0, animOk = true;
+  function tick(now) {
+    raf = active ? requestAnimationFrame(tick) : 0;
+    const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
+    last = now;
+    if (!model || !animOk || typeof Models.animateModel !== 'function') return;
+    try {
+      const tod = G.world.timeOfDay ?? 12;
+      model.userData.night = tod < 6 || tod > 19.5;
+      Models.animateModel(model, parked, dt);
+    } catch (e) { animOk = false; }
   }
   // запасной облёт, если камера-витрина ещё не реализована в cameraRig
   function fallbackOrbit(dt) {
@@ -96,8 +113,9 @@ function createShowcase(G) {
       try {
         model = Models.buildModel(planeId, livery ? { livery } : {});
         model.position.set(s.x, y, s.z);
-        model.rotation.set(0, -s.heading, 0);
+        model.rotation.set(model.userData.groundPitch || 0, -s.heading, 0, 'YXZ');
         G.scene.add(model);
+        if (!raf) { last = performance.now(); raf = requestAnimationFrame(tick); }
       } catch (e) { console.error('[menu] модель', e); model = null; }
       const radius = Math.max(spec.length, spec.span) * 1.05 + 5;
       const target = { x: s.x, y: y + spec.length * 0.02, z: s.z, radius };
@@ -111,7 +129,7 @@ function createShowcase(G) {
     },
     rotate(dx, dy) {
       const r = rig();
-      if (typeof r.showcaseRotate === 'function') { try { r.showcaseRotate(-dx * 0.008, dy * 0.006); } catch (e) { /* ignore */ } return; }
+      if (typeof r.showcaseRotate === 'function') { try { r.showcaseRotate(dx * 0.008, dy * 0.006); } catch (e) { /* ignore */ } return; }
       orbit.yaw -= dx * 0.008;
       orbit.pitch = Math.max(0.03, Math.min(1.25, orbit.pitch + dy * 0.006));
     },
@@ -129,6 +147,8 @@ function createShowcase(G) {
     },
     hide() {
       active = false;
+      cancelAnimationFrame(raf);
+      raf = 0;
       removeModel();
       const r = rig();
       try {

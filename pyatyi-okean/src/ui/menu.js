@@ -278,7 +278,12 @@ export function createMenu(G) {
       } catch (e) { /* мир переживёт */ }
     }
     menu.show('main');
-    if (afterMenu) { const a = afterMenu; afterMenu = null; ctx.go(a.id, a.params); }
+    if (afterMenu) {
+      const a = afterMenu;
+      afterMenu = null;
+      if (a.id === 'brief') stack.push({ id: 'career', params: {} });
+      ctx.go(a.id, a.params);
+    }
     else setTimeout(greet, 350);
   });
   G.bus.on('career:changed', () => {

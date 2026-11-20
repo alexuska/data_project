@@ -1,5 +1,5 @@
 // Карьера: список заданий по категориям и брифинг. Рендерится строго по контракту «Описание задания».
-import { esc, icon, fmtInt, fmtMoney, fmtNum, stars, pips, mapHtml, routeInfo, shortAirport, CLS_NAMES } from './menu-kit.js';
+import { esc, icon, fmtInt, fmtMoney, fmtNum, stars, pips, mapHtml, routeInfo, shortAirport } from './menu-kit.js';
 import { CATEGORY_ORDER } from '../systems/career.js';
 import { STAR_BONUS } from '../systems/economy.js';
 import { getSpec } from '../aircraft/catalog.js';
@@ -125,7 +125,7 @@ export function briefScreen(ctx) {
           ${ri ? `<span class="menu-brief-route-num">${fmtNum(ri.km, 0)} км · курс ${String(ri.course).padStart(3, '0')}°</span>` : ''}
         </div>` : '';
       const canFly = st.unlocked && !!planeId;
-      el.innerHTML = `${ctx.bar('Брифинг', { backLabel: 'К заданиям' })}
+      el.innerHTML = `${ctx.bar('Брифинг')}
         <div class="menu-body menu-brief">
           <section class="menu-panel menu-brief-main">
             <div class="menu-scroll menu-brief-text" data-scroll="brief">
@@ -158,4 +158,4 @@ export function briefScreen(ctx) {
     },
   };
 }
-export { catName, CLS_NAMES };
+export { catName };
