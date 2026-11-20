@@ -82,6 +82,7 @@ G.startFlight = function (session = {}) {
     ac = G.spawnAircraft(session.planeId, { team: 'player', isPlayer: true, x: st.x, y: st.y, z: st.z, heading: st.heading, speed: 0, onGround: true, livery: session.livery });
   }
   Object.assign(ac.mods, G.career.planeMods ? G.career.planeMods(session.planeId) : null);
+  ac.assist = G.profile.settings.assist !== false;
   G.player = ac;
   G.combat.armAircraft(ac, session.loadout);
   G.flight = { session, time: 0, distance: 0, maxAlt: 0, maxSpeed: 0, touchdowns: [], takeoffs: 0, endTimer: -1, ended: false };
@@ -159,6 +160,7 @@ G.step = function (dt) {
       safe('physics', () => stepAircraft(ac, env, dt));
     }
     safe('combat', () => G.combat.update(dt));
+    if (G.career.update) safe('career', () => G.career.update(dt));
     if (p && f && !f.ended) {
       f.time += dt;
       if (p.alive) {
@@ -188,6 +190,9 @@ G.bus.on('ac:crash', (e) => {
   }
 });
 G.bus.on('input:pause', () => G.setPaused(!G.paused));
+G.bus.on('settings:changed', () => {
+  if (G.player) G.player.assist = G.profile.settings.assist !== false;
+});
 
 // ---------- кадр (переменный dt): визуальные системы ----------
 G.frameUpdate = function (dtSim, dtReal) {
