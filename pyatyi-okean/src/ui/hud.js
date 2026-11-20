@@ -209,7 +209,7 @@ export function createHud(G) {
       zone = fr < 0.04 ? 'у самого торца' : fr <= 0.34 ? 'в зоне' : fr < 0.5 ? 'перелёт' : 'большой перелёт';
       rows.push(['Касание от торца', `${Math.max(0, s).toFixed(0)} м`, zone, znScore >= 100 ? 'good' : znScore >= 62 ? 'warn' : 'bad']);
       score = Math.round(vsScore * 0.5 + axScore * 0.25 + znScore * 0.25);
-      title = score >= 88 ? 'Отличная посадка' : score >= 72 ? 'Хорошая посадка' : score >= 52 ? 'Посадка зачтена' : vs >= 4.5 ? 'Жёсткая посадка' : 'Грубая посадка';
+      title = score >= 88 ? 'Три-хо-хо! Отличная посадка' : score >= 72 ? 'Хорошая посадка' : score >= 52 ? 'Посадка зачтена' : vs >= 4.5 ? 'Жёсткая посадка' : 'Грубая посадка';
     } else if (e.surface === 'water') {
       title = vs < 2.5 ? 'Мягкое приводнение' : 'Жёсткое приводнение';
     } else {

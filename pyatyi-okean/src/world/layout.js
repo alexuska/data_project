@@ -11,12 +11,12 @@ export const WORLD_SIZE = 64000;
 // side — с какой стороны от полосы 0 (по курсу: +1 справа, −1 слева) стоят перрон и постройки
 export const AIRPORTS = [
   {
-    id: 'yasny', name: 'Ясный', code: 'УЯСН', kind: 'intl', x: 0, z: 2000, elevation: 14, side: 1,
+    id: 'yasny', name: 'Тирасполь', code: 'УТРС', kind: 'intl', x: 0, z: 2000, elevation: 14, side: 1,
     runways: [
       { name: '09/27', heading: 90 * DEG, length: 3000, width: 60, cx: 0, cz: 2000 },
       { name: '03/21', heading: 30 * DEG, length: 2200, width: 45, cx: 900, cz: 600 },
     ],
-    desc: 'Главный международный аэропорт архипелага.',
+    desc: 'Главный аэропорт архипелага — родной Тирасполь.',
   },
   {
     id: 'kamenny', name: 'Каменный Мыс', code: 'УКМН', kind: 'military', x: -14000, z: -9000, elevation: 32, side: 1,
@@ -24,9 +24,9 @@ export const AIRPORTS = [
     desc: 'Военная авиабаза на скалистом мысу.',
   },
   {
-    id: 'gavan', name: 'Тихая Гавань', code: 'УТГВ', kind: 'regional', x: 11500, z: 9500, elevation: 6, side: 1,
+    id: 'gavan', name: 'Бендеры', code: 'УБНД', kind: 'regional', x: 11500, z: 9500, elevation: 6, side: 1,
     runways: [{ name: '06/24', heading: 60 * DEG, length: 1500, width: 35, cx: 11500, cz: 9500 }],
-    desc: 'Небольшой аэропорт у рыбацкого городка.',
+    desc: 'Небольшой аэродром у порта, сразу за мостом через Днестр.',
   },
   {
     id: 'gnezdo', name: 'Орлиное Гнездо', code: 'УОГН', kind: 'strip', x: 6500, z: -12500, elevation: 860, side: -1,
@@ -39,14 +39,14 @@ export const AIRPORTS = [
     desc: 'Грунтовая полоса на маленьком острове с маяком.',
   },
   {
-    id: 'polyarny', name: 'Полярный', code: 'УПЛР', kind: 'regional', x: 2500, z: -24500, elevation: 22, side: -1,
+    id: 'polyarny', name: 'Москва', code: 'УМСК', kind: 'regional', x: 2500, z: -24500, elevation: 22, side: -1,
     runways: [{ name: '08/26', heading: 80 * DEG, length: 2000, width: 45, cx: 2500, cz: -24500 }],
-    desc: 'Северный аэродром среди снегов.',
+    desc: 'Северный аэродром среди снегов. Зимой — как в Москве.',
   },
   {
-    id: 'yuzhny', name: 'Южный', code: 'УЮЖН', kind: 'regional', x: 18500, z: 21000, elevation: 8, side: 1,
+    id: 'yuzhny', name: 'Париж', code: 'УПРЖ', kind: 'regional', x: 18500, z: 21000, elevation: 8, side: 1,
     runways: [{ name: '01/19', heading: 10 * DEG, length: 1900, width: 45, cx: 18500, cz: 21000 }],
-    desc: 'Курортный аэропорт на тёплом южном острове.',
+    desc: 'Аэропорт на тёплом южном острове. Рядом — городок Бри-Конт-Робер.',
   },
   {
     id: 'carrier', name: 'Авианосец «Буревестник»', code: 'БРВС', kind: 'carrier', x: -21000, z: 6000, elevation: 18, side: 1,
@@ -57,18 +57,18 @@ export const AIRPORTS = [
 
 // Ориентиры и объекты для миссий/свободного полёта
 export const POIS = [
-  { id: 'city_yasny', name: 'город Ясный', kind: 'city', x: 2500, z: 5200 },
-  { id: 'port_gavan', name: 'порт Тихой Гавани', kind: 'port', x: 12800, z: 10800 },
+  { id: 'city_yasny', name: 'город Тирасполь', kind: 'city', x: 2500, z: 5200 },
+  { id: 'port_gavan', name: 'порт Бендеры', kind: 'port', x: 12800, z: 10800 },
   { id: 'lighthouse', name: 'Старый маяк', kind: 'lighthouse', x: -10330, z: 16520 },
   { id: 'volcano', name: 'вулкан Дымный', kind: 'volcano', x: 15500, z: -6500 },
   { id: 'peak', name: 'пик Орлиный', kind: 'peak', x: 5200, z: -10200 },
   { id: 'dam', name: 'плотина Верхняя', kind: 'dam', x: -4500, z: -6000 },
   { id: 'observatory', name: 'обсерватория', kind: 'observatory', x: 8200, z: -14500 },
   { id: 'forest_west', name: 'Западный лес', kind: 'forest', x: -6500, z: -1500 },
-  { id: 'resort', name: 'курорт Южный', kind: 'resort', x: 19800, z: 22500 },
+  { id: 'resort', name: 'Бри-Конт-Робер', kind: 'resort', x: 19800, z: 22500 },
   { id: 'station_north', name: 'полярная станция', kind: 'station', x: 4200, z: -26500 },
   { id: 'oilrig', name: 'буровая платформа', kind: 'oilrig', x: -24000, z: -18000 },
-  { id: 'bridge', name: 'Большой мост', kind: 'bridge', x: 5500, z: 6500 },
+  { id: 'bridge', name: 'мост через Днестр', kind: 'bridge', x: 5500, z: 6500 },
 ];
 
 export const AIRPORT_BY_ID = Object.fromEntries(AIRPORTS.map((a) => [a.id, a]));

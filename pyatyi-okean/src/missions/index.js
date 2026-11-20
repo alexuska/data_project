@@ -1,7 +1,7 @@
 // МИССИИ (заглушка v0 — заменяется агентом «Миссии»). Контракт — в ARCHITECTURE.md.
 export function createMissions(G) {
   const list = [
-    { id: 'first_flight', title: 'Первый вылет', category: 'training', plane: 'yak52', brief: 'Взлетите с полосы 09 аэропорта Ясный и наберите 300 метров.', reward: { money: 500, xp: 100 } },
+    { id: 'first_flight', title: 'Первый вылет', category: 'training', plane: 'yak52', brief: 'Взлетите с полосы 09 аэропорта Тирасполь и наберите 300 метров.', reward: { money: 500, xp: 100 } },
   ];
   const missions = {
     list,

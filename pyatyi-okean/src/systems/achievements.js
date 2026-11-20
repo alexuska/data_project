@@ -40,7 +40,7 @@ export const ACHIEVEMENTS = [
   { id: 'low_pass', title: 'Бреющий полёт', desc: '10 секунд ниже 20 метров на скорости больше 250 км/ч.', icon: 'lowpass', reward: R(800, 150) },
   { id: 'roll', title: 'Бочка', desc: 'Выполнить полный оборот по крену.', icon: 'aerobatics', reward: R(300, 60) },
   { id: 'loop', title: 'Петля Нестерова', desc: 'Выполнить мёртвую петлю.', icon: 'aerobatics', reward: R(500, 100) },
-  { id: 'bridge', title: 'Чкаловский пролёт', desc: 'Пролететь под Большим мостом.', icon: 'bridge', reward: R(1500, 300) },
+  { id: 'bridge', title: 'Чкаловский пролёт', desc: 'Пролететь под мостом через Днестр.', icon: 'bridge', reward: R(1500, 300) },
   // --- география ---
   { id: 'all_airports', title: 'Знаю каждую полосу', desc: 'Сесть на всех аэродромах архипелага.', icon: 'pin', reward: R(5000, 1000), goal: 8, value: (p) => Object.keys(p.visited || {}).length },
   { id: 'explorer', title: 'Картограф', desc: 'Открыть все ориентиры архипелага.', icon: 'compass', reward: R(3000, 600), goal: 12, value: (p) => Object.keys(p.places || {}).length },

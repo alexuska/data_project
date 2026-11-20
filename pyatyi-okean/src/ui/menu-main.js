@@ -31,7 +31,7 @@ export function mainScreen(ctx) {
         </nav>
         <aside class="menu-main-side">
           <button type="button" class="menu-pilot" data-act="go" data-to="logbook">
-            <span class="menu-label">${esc(p.pilotName || 'Пилот')}</span>
+            <span class="menu-label">${p.callsign ? `«${esc(p.callsign)}» · ${esc((p.pilotName || '').split(' ')[0])}` : esc(p.pilotName || 'Пилот')}</span>
             <span class="menu-pilot-rank">${esc(r.name)}</span>
             ${scale(r.progress, 0, 'menu-scale--ticks')}
             <span class="menu-pilot-xp">${r.nextXp != null ? `<b>${fmtInt(r.xp)}</b> / ${fmtInt(r.nextXp)} опыта <i>до звания «${esc(r.nextName)}»</i>` : `<b>${fmtInt(r.xp)}</b> опыта · высшее звание`}</span>

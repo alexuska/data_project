@@ -5,7 +5,8 @@ const KEY = 'pyatyi-okean-profile-v1';
 export function defaultProfile() {
   return {
     version: 1,
-    pilotName: 'Пилот',
+    pilotName: 'Дмитрий Копленко',
+    callsign: 'Корвет',          // позывной в радиообмене
     money: 1500,
     xp: 0,
     owned: ['yak52'],            // id купленных самолётов
@@ -54,6 +55,8 @@ export function loadProfile() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) merge(p, JSON.parse(raw));
+    if (!p.pilotName || p.pilotName === 'Пилот') p.pilotName = 'Дмитрий Копленко';
+    if (!p.callsign) p.callsign = 'Корвет';
   } catch (e) {
     /* хранилище недоступно — играем с профилем по умолчанию */
   }
