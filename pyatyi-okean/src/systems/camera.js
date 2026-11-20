@@ -27,7 +27,7 @@ export function createCameraRig(G) {
     fly: { pos: new THREE.Vector3(), t: 0, valid: false, tower: null },
     hidden: null,
     // меню
-    shots: null, shot: 0, shotT: 0, kick: 1, fade: -1,
+    shots: null, shot: 0, shotT: 0, kick: 1, fade: -1, lift: 0,
     show: null,
   };
 
@@ -97,8 +97,8 @@ export function createCameraRig(G) {
 
     const size = sizeOf(ac);
     const sp = clamp(ac.ias / ac.spec.vMax, 0, 1.2);
-    const portrait = clamp(1.25 / (cam.aspect || 1.8), 1, 1.7);
-    const dist = (size * 1.5 + 9) * st.zoom * (1 + 0.14 * sp) * portrait;
+    const portrait = clamp(1.25 / (cam.aspect || 1.8), 1, 1.7) * (cam.aspect < 1.6 ? 1.12 : 1);
+    const dist = (size * 1.02 + 4.5) * st.zoom * (1 + 0.14 * sp) * portrait;
     const yaw = st.yaw + st.lookYaw;
     const el = clamp(0.21 - st.pit + st.lookPit, -1.25, 1.45);
     const ce = Math.cos(el);
@@ -108,7 +108,7 @@ export function createCameraRig(G) {
 
     // точка взгляда: чуть впереди по фактическому курсу и ниже самолёта — он стоит выше центра и не закрыт приборами
     const lookFree = 1 - clamp(Math.abs(st.lookYaw) + Math.abs(st.lookPit), 0, 1);
-    const ahead = dist * 0.25 * lookFree, down = dist * (cam.aspect > 1.6 ? 0.125 : 0.09) * lookFree;
+    const ahead = dist * 0.25 * lookFree, down = dist * (cam.aspect > 1.6 ? 0.125 : cam.aspect < 1 ? 0.3 : 0.09) * lookFree;
     T.set(ac.pos.x + Math.sin(yawT) * ahead * Math.sqrt(h2), ac.pos.y - down + size * 0.06, ac.pos.z - Math.cos(yawT) * ahead * Math.sqrt(h2));
     // лёгкий наклон горизонта вслед за креном
     _u.set(0, 1, 0).applyQuaternion(ac.quat);
@@ -207,7 +207,7 @@ export function createCameraRig(G) {
     if (fromCockpit || d < size * 0.8 || d > size * 14 + 300) {
       _f.set(0, 0, -1).applyQuaternion(ac.quat);
       const yaw = Math.atan2(_f.x, -_f.z);
-      d = size * 1.5 + 9;
+      d = size * 1.02 + 4.5;
       _v.set(-Math.sin(yaw) * d, d * 0.22, Math.cos(yaw) * d);
       d = _v.length();
     }
@@ -274,6 +274,16 @@ export function createCameraRig(G) {
     const floor = Math.max(0, G.world.heightAt(P.x, P.z)) + 60;
     if (P.y < floor) P.y = floor;
     T.set(s.o.x, gy + s.look, s.o.z);
+    // рельеф не должен заслонять цель плана: при необходимости камера плавно поднимается
+    let need = 0;
+    for (let i = 1; i <= 4; i++) {
+      const f = i / 5;
+      const hh = G.world.heightAt(P.x + (T.x - P.x) * f, P.z + (T.z - P.z) * f) + 40;
+      const lift = (hh - (P.y + (T.y - P.y) * f)) / (1 - f);
+      if (lift > need) need = lift;
+    }
+    st.lift = st.shotT < 0.2 ? need : damp(st.lift, need, 1.2, dt);
+    P.y += st.lift;
     lookQuat(Q, P, T, UP);
     st.fov = clamp(s.fov * clamp(1.5 / (cam.aspect || 1.8), 1, 1.6), 30, 80);
     st.near = 8;
@@ -305,7 +315,8 @@ export function createCameraRig(G) {
     st.trauma = Math.max(0, st.trauma - dtc * 1.6);
     let rumble = 0;
     if (ac && ac.alive && G.mode === 'flight' && !G.paused) {
-      if (ac.stalled) rumble = 0.38;
+      if (typeof ac.buffet === 'number') rumble = ac.buffet * 0.38;
+      else if (ac.stalled) rumble = 0.38;
       const ab = afterburnerFrom(ac.spec);
       if (ab && ac.throttle >= ab) rumble = Math.max(rumble, 0.1);
       if (ac.ias > ac.spec.vMax * 0.97) rumble = Math.max(rumble, 0.22);

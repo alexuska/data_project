@@ -26,6 +26,7 @@ export function createRadar(G, canvas, K) {
     const range = ac.spec.vMax < 120 ? 5000 : ac.spec.vMax < 280 ? 10000 : 16000;
     const sc = R / range, px = ac.pos.x, pz = ac.pos.z;
     c.setTransform(k, 0, 0, k, 0, 0);
+    c.direction = 'ltr';
     c.clearRect(0, 0, SZ, SZ);
     c.save();
     c.beginPath(); c.arc(C, C, R, 0, TAU); c.clip();

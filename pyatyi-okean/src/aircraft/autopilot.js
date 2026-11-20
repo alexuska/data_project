@@ -59,8 +59,10 @@ function throttleFor(ac, vT, dt, allowAB) {
   const top = spec.afterburner && !allowAB ? 0.9 : 1;
   const err = vT - ac.ias;
   const kp = 2.6 / spec.vStall;
-  ap.thrI = clamp(ap.thrI + err * (0.5 / spec.vStall) * dt, 0, top);
-  return clamp(ap.thrI + kp * err - (3.2 / spec.vStall) * ap.acc, 0, top);
+  const raw = ap.thrI + kp * err - (3.2 / spec.vStall) * ap.acc;
+  // интегратор не накручиваем, пока газ в упоре
+  if (!((raw >= top && err > 0) || (raw <= 0 && err < 0))) ap.thrI = clamp(ap.thrI + err * (0.5 / spec.vStall) * dt, 0, top);
+  return clamp(raw, 0, top);
 }
 function track(ap, ac, dt) {
   // сглаженное продольное ускорение (по приборной скорости)
@@ -83,9 +85,10 @@ export function apHold(ac, tgt, dt) {
   const vsCfg = ac.ctl.vsCfg || spec.vStall;
   const V = Math.max(ac.tas, 0.5 * spec.vStall);
   // --- боковой канал ---
-  const bMax = Math.min(tgt.bankMax ?? defBank(ac), ac.ctl.bankLim > 0 ? ac.ctl.bankLim - 0.05 : 9);
+  const bLim = ac.ctl.bankLim > 0 ? ac.ctl.bankLim - 0.04 : 9;
+  const bMax = Math.min(tgt.bankMax ?? defBank(ac), bLim);
   let bank = 0;
-  if (tgt.bank != null) bank = clamp(tgt.bank, -bMax, bMax);
+  if (tgt.bank != null) bank = clamp(tgt.bank, -bLim, bLim);
   else if (tgt.heading != null) bank = clamp(Math.atan((0.55 * wrapPi(tgt.heading - ac.heading) * V) / G0) + (tgt.bankFF || 0), -bMax, bMax);
   c.roll = rollForBank(ac, bank);
   c.yaw = 0;
@@ -108,7 +111,7 @@ export function apHold(ac, tgt, dt) {
   // --- газ ---
   if (tgt.throttle != null) c.throttle = clamp(tgt.throttle, 0, 1);
   else if (tgt.speed != null) c.throttle = throttleFor(ac, Math.max(tgt.speed, 1.15 * vsCfg), dt, tgt.afterburner);
-  c.airbrake = tgt.speed != null && tgt.throttle == null && ac.ias > tgt.speed + Math.max(12, 0.12 * tgt.speed) && c.throttle < 0.05 ? 1 : 0;
+  c.airbrake = tgt.speed != null && tgt.throttle == null && ac.ias > tgt.speed + (tgt.brakeAt ?? Math.max(12, 0.12 * tgt.speed)) && c.throttle < 0.05 ? 1 : 0;
   c.brake = 0;
 }
 
@@ -129,7 +132,7 @@ export function apFlyTo(ac, p, dt) {
 }
 const _hold = { heading: 0, alt: 0, speed: 0, bankMax: undefined };
 const _h2 = {};
-function clear(o) { o.heading = o.alt = o.speed = o.vs = o.bank = o.throttle = o.bankMax = o.vsMax = o.vsDown = o.bankFF = o.vsFF = o.afterburner = undefined; return o; }
+function clear(o) { o.heading = o.alt = o.speed = o.vs = o.bank = o.throttle = o.bankMax = o.vsMax = o.vsDown = o.bankFF = o.vsFF = o.afterburner = o.brakeAt = undefined; return o; }
 
 // ---------- взлёт ----------
 // opts: { heading? (курс полосы; по умолчанию — текущий), alt? (высота выхода над местом старта, по умолчанию 150 м) }
@@ -345,8 +348,12 @@ export function apFollow(ac, leader, offset, dt) {
     _h2.bankFF = leader.bank * 0.8;
     _h2.alt = sy;
     _h2.vsFF = leader.vs;
-    _h2.speed = clamp(leader.ias + clamp(0.22 * along, -0.2 * V, 0.25 * V), ac.spec.vStall * 1.2, ac.spec.vMax);
+    // сближение по «тормозному» закону: чем ближе, тем меньше разница скоростей — без проскакивания
+    const aa = Math.abs(along);
+    const dv = Math.sign(along) * Math.min(0.12 * aa, Math.sqrt(1.0 * aa), 0.25 * V);
+    _h2.speed = clamp(leader.ias + dv, ac.spec.vStall * 1.2, ac.spec.vMax);
     _h2.afterburner = along > 3 * V;
+    _h2.brakeAt = 4;
   }
   apHold(ac, _h2, dt);
   return dist;
@@ -413,7 +420,7 @@ export function apPursue(ac, target, dt, opts) {
   // скорость: не теряем энергию в вираже, не проскакиваем цель
   const vCorner = spec.vStall * Math.sqrt(spec.maxG) * 0.95;
   const range = (opts && opts.range) || 350;
-  let vT = opts && opts.speed != null ? opts.speed : tv ? clamp(Math.hypot(tv.x, tv.y, tv.z) + clamp((dist0 - range) * 0.12, -40, 120), 1.5 * spec.vStall, spec.vMax * 0.98) : Math.min(spec.vCruise * 1.1, spec.vMax);
+  let vT = opts && opts.speed != null ? opts.speed : tv ? clamp(Math.hypot(tv.x, tv.y, tv.z) + Math.sign(dist0 - range) * Math.min(0.12 * Math.abs(dist0 - range), Math.sqrt(4 * Math.abs(dist0 - range)), 120), 1.5 * spec.vStall, spec.vMax * 0.98) : Math.min(spec.vCruise * 1.1, spec.vMax);
   if (!(opts && opts.speed != null) && offV > 25 * DEG) vT = Math.max(vT, Math.min(vCorner, spec.vMax * 0.9));
   c.throttle = throttleFor(ac, vT, dt, true);
   c.airbrake = ac.ias > vT + 30 && c.throttle < 0.05 ? 1 : 0;

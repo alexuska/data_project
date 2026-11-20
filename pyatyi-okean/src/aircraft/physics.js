@@ -8,7 +8,8 @@
 //    Cx0 выводится из паспортной максимальной скорости, Cy max — из скорости сваливания (deriveAero).
 //  • Вращение — «скоростное»: ручка задаёт угол атаки (а через него перегрузку), нос сам идёт за вектором скорости,
 //    поэтому раскачки и расходящейся фугоиды нет. Ручка по крену задаёт угловую скорость крена.
-//  • Помощь пилоту (assist): удержание траектории при отпущенной ручке (автотриммер), ограничитель угла атаки
+//  • Помощь пилоту (assist): удержание траектории при отпущенной ручке (автотриммер; в крене до 45° высота почти держится,
+//    брошенный глубокий крен сам возвращается к 45°), ограничитель угла атаки
 //    («упирается», а не срывается), координация разворота, мягкие ограничения крена/тангажа у лайнеров.
 //    Без помощи: классическая балансировка по скорости (газ — высота, ручка — скорость), срыв с валёжкой, штопор при грубой ошибке.
 //  • Земля/вода/палуба: разбег, подъём носа, трение и торможение, реверс и тормозной парашют, боковой ветер,
@@ -56,7 +57,7 @@ function waveRise(spec, M) {
   if (x <= 0) return 0;
   if (spec.supersonic) {
     const t = x >= 0.25 ? 1 : x / 0.25;
-    return t * t * (3 - 2 * t);
+    return 1.6 * t * t * (3 - 2 * t);
   }
   return 40 * x * x;
 }
@@ -66,7 +67,7 @@ export function thrustAt(spec, throttle, V, rho, a = A0) {
   const sigma = rho / RHO0;
   if (spec.engine === 'jet') {
     const M = V / a;
-    const kq = spec.afterburner ? 0.3 : 0.4 * spec.thrustLapse;
+    const kq = spec.afterburner ? 0.4 : 0.4 * spec.thrustLapse; // у форсажных — прирост от скоростного напора
     const speedF = Math.max(0.3, 1 - spec.thrustLapse * M + kq * M * M);
     let t0;
     if (spec.afterburner) {
@@ -176,7 +177,7 @@ export function createAircraft(specId, opts = {}) {
     ctl: { nN: 1, nHi: 1, nLo: 1, rollMax: 0, bankLim: 0, vsCfg: spec.vStall, assist: true },
     // внутреннее состояние
     _trimQ: 0, _stallT: 0, _stallDir: 0, _spinT: 0, _flying: false, _landing: false, _rollout: 0,
-    _arrestA: 0, _dmgAcc: 0, _slopePitch: 0,
+    _arrestA: 0, _dmgAcc: 0, _slopePitch: 0, _acc: 0, _iasPrev: 0, _catOn: false,
   };
   return ac;
 }
@@ -202,6 +203,8 @@ export function placeAircraft(ac, { x, y, z, heading = 0, speed = 0, onGround = 
   ac.pitch = onGround ? spec.groundPitch : aTrim;
   ac.bank = 0;
   ac.tas = ac.ias = ac.gs = speed;
+  ac._iasPrev = speed * Math.sqrt(airDensity(y) / RHO0);
+  ac._acc = 0;
   ac.alt = y;
   ac.agl = onGround ? 0 : 500;
   ac.stalled = false;
@@ -299,6 +302,9 @@ export function stepAircraft(ac, env, dt) {
   const mach = V / aSnd;
   const ias = V * Math.sqrt(rho / RHO0);
 
+  ac._acc = damp(ac._acc, clamp((ias - ac._iasPrev) / dt, -20, 20), 2, dt); // сглаженное изменение приборной скорости
+  ac._iasPrev = ias;
+
   let alpha = 0, beta = 0;
   if (V > 1) {
     _vaHat.copy(_va).multiplyScalar(1 / V);
@@ -373,7 +379,7 @@ export function stepAircraft(ac, env, dt) {
   if (ac.chute > 0) _force.addScaledVector(_vaHat, -qbar * spec.chute * 1.1 * ac.chute);
   const wantRev = spec.reverse && ac.onGround && brake > 0.2 && gsNow > 12 && running;
   ac.reverse = approach(ac.reverse, wantRev ? brake : 0, dt * 1.2);
-  if (ac.reverse > 0) _force.addScaledVector(_f, -spec.thrust * 0.28 * ac.reverse);
+  if (ac.reverse > 0) _force.addScaledVector(_f, -spec.thrust * 0.22 * ac.reverse);
 
   // перегрузка по нормали (для приборов и ограничений)
   const tl = T * _f.dot(_lift); // составляющая тяги по нормали к потоку
@@ -400,11 +406,17 @@ export function stepAircraft(ac, env, dt) {
       // удержание траектории + частичная компенсация крена (в крене нос плавно опускается)
       if (gl >= 0) {
         const cphi = clamp(gl / Math.max(cg, 0.2), 0, 1);
-        const w = smoothstep(0.34, 0.62, cphi);
-        nHold = cg * (cphi + 0.6 * w * (1 / Math.max(cphi, 0.5) - cphi));
+        // до 45° крена высота почти держится сама, дальше компенсация тает: глубокий вираж надо «тянуть»
+        const w = 0.97 * smoothstep(0.2, 0.7, cphi);
+        nHold = cg * (cphi + w * (1 / Math.max(cphi, 0.3) - cphi));
         // почти горизонтальный полёт сам выравнивается в горизонт («отпустил — летит ровно»)
         const gam = _vaHat.y, gCap = 0.012 + 0.6 / vRef;
         if (Math.abs(sP) < 0.04 && Math.abs(gam) < gCap && cphi > 0.9) nHold -= (0.6 * gam * vRef) / G0;
+        // в глубоком вираже с брошенной ручкой набранное снижение гасится (пологие развороты траекторию не трогают)
+        else if (Math.abs(sP) < 0.04 && gam < 0 && cphi < 0.94) nHold -= (0.45 * (1 - smoothstep(0.71, 0.94, cphi)) * gam * vRef) / G0;
+        // мягкая защита по скорости: если скорость тает у самого сваливания — плавно опускаем нос, меняя высоту на скорость
+        const vProt = 1.2 * ctl.vsCfg;
+        if (ias < vProt && sP < 0.15 && ac._acc < 0) nHold -= 0.3 * clamp((vProt - ias) / (0.1 * vS), 0, 1) * clamp(-ac._acc / 0.25, 0, 1);
       } else nHold = gl * 0.3;
     } else {
       // классика: постоянный Cy (балансировочная скорость) + демпфирование фугоиды
@@ -434,6 +446,13 @@ export function stepAircraft(ac, env, dt) {
     const aN = clamp(aOfN(nHold), aLo, Math.min(aHi, aStall * 0.9));
     let aCmd = sP >= 0 ? aN + sP * (aHi - aN) : aN + sP * (aN - aLo);
     ctl.nN = nOfA(aN); ctl.nHi = nOfA(aHi); ctl.nLo = nOfA(aLo);
+    if (assist && _vaHat.y > 0.05) {
+      // запас энергии в наборе: чем круче лезем и чем ближе скорость к сваливанию, тем меньше даём тянуть —
+      // самолёт сам переваливается на нос раньше, чем «повиснет»
+      const sg = _vaHat.y;
+      const kV = clamp((ias - ctl.vsCfg * (1 + 0.45 * sg)) / (vS * (0.12 + 0.25 * sg)), 0, 1);
+      if (kV < 1) aCmd = Math.min(aCmd, aOfN(0.3 * cg + kV * (ctl.nHi - 0.3 * cg)));
+    }
 
     // --- срыв и штопор ---
     let stallRoll = 0, stallYaw = 0, ailK = 1;
@@ -482,7 +501,11 @@ export function stepAircraft(ac, env, dt) {
     ctl.bankLim = assist && spec.bankLimit ? spec.bankLimit : 0;
     if (assist && Math.abs(ac.pitch) < 1.1) {
       if (spec.bankLimit) pr = clamp(pr, (-spec.bankLimit - ac.bank) * 2.5, (spec.bankLimit - ac.bank) * 2.5);
-      if (Math.abs(sR) < 0.04 && Math.abs(ac.bank) < 0.14) pr -= ac.bank * 0.9; // малый крен убирается сам
+      if (Math.abs(sR) < 0.05) {
+        const ab = Math.abs(ac.bank);
+        if (ab < 0.14) pr -= ac.bank * 0.9; // малый крен убирается сам
+        else if (ab > 0.8) pr -= Math.sign(ac.bank) * Math.min((ab - 0.8) * 0.7, 0.5 * rollMax); // брошенный глубокий крен плавно возвращается к 45°
+      }
     }
     let wRoll = -pr + 0.6 * beta * effQ + stallRoll + gRoll;
     if (hpK > 0.45) wRoll += (ac.id % 2 ? 1 : -1) * 0.25 * (hpK - 0.45) * effQ; // повреждённое крыло «тянет»
@@ -565,6 +588,7 @@ export function stepAircraft(ac, env, dt) {
       let reason = null, dmg = 0, src = 'landing';
       if (water && !spec.amphibian) reason = 'water';
       else if (ny < 0.82 && vn > 5) reason = 'terrain';
+      else if (pitchT < -0.3 && vn > 2.2) reason = 'nose';
       else if (vn > aero.vsCrash) reason = ny < 0.95 || slopeRate > 0.5 * vn ? 'terrain' : 'hard';
       else if (Math.abs(bankT) > aero.bankCrash) reason = 'wing';
       else if (pitchT < -0.3 || (pitchT < -0.16 && vn > 2.2)) reason = 'nose';
@@ -575,7 +599,7 @@ export function stepAircraft(ac, env, dt) {
         if (Math.abs(bankT) > aero.bankCrash * 0.6) dmg += 15;
         if (pitchT < -0.07) dmg += 12;
         if (Math.abs(drift) > 6 && !water) dmg += Math.min(30, (Math.abs(drift) - 6) * 3);
-        if (pitchT > aero.rotMax + 0.1 && !water) dmg += 8; // касание хвостом
+        if (pitchT > Math.max(aero.rotMax, spec.groundPitch) + 0.17 && !water) dmg += 8; // касание хвостом
         if (belly) { dmg += (spec.id === 'yak52' ? 12 : 30) + gs * 0.12; src = 'gearup'; }
         if (floatW && ac.gearPos > 0.5 && gs > 25) dmg += 20; // амфибия с выпущенным шасси на воду
         if (dmg > 0) {
@@ -655,7 +679,7 @@ export function stepAircraft(ac, env, dt) {
       if (belly) { mu = paved ? 0.45 : 0.6; latK = 4; }
       else {
         mu = paved ? 0.02 : spec.ground ? 0.045 : 0.09;
-        mu += brake * (paved ? 0.4 * (1 - 0.35 * rain) : 0.3);
+        mu += brake * (paved ? 0.3 * (1 - 0.35 * rain) : 0.25);
         latK = paved ? 10 - 4 * rain : 7;
       }
     }

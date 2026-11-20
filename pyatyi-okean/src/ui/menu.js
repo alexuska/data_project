@@ -171,7 +171,7 @@ export function createMenu(G) {
 
   function updateRotateHint() {
     const portrait = innerHeight > innerWidth * 1.15;
-    const show = !root.hidden && portrait && !rotateDismissed && G.mode === 'menu';
+    const show = !root.hidden && portrait && !rotateDismissed && G.mode === 'menu' && !!current && current.id === 'main';
     if (show && rotateEl.hidden) {
       rotateEl.innerHTML = `${icon('rotate', 22)}<span>В альбомной ориентации летать удобнее — поверните телефон.</span><button type="button" data-act="rotate-close" aria-label="Закрыть">${icon('close', 18)}</button>`;
     }
@@ -267,7 +267,11 @@ export function createMenu(G) {
     menu.hide();
   });
   G.bus.on('flight:end', ({ result }) => menu.showDebrief(result));
-  G.bus.on('pause', ({ paused }) => (paused ? menu.show('pause') : menu.hide()));
+  G.bus.on('pause', ({ paused }) => {
+    // на паузе приборы убираем: экран паузы и настройки читаются чище
+    try { if (paused) G.hud?.hide?.(); else if (G.mode === 'flight') G.hud?.show?.(); } catch (e) { /* ignore */ }
+    if (paused) menu.show('pause'); else menu.hide();
+  });
   G.bus.on('menu:show', () => {
     // фон меню — спокойная погода, а не гроза из последнего вылета
     if (ambient.dirty) {

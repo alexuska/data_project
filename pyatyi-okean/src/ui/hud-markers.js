@@ -71,7 +71,7 @@ export function createMarkers(G, layer, colli) {
     const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
     const front = project(m.x, y, m.z);
     const kind = KINDS[m.kind] ? m.kind : 'waypoint';
-    let off = !front || sx < inL || sx > W - inR || sy < inT || sy > H - inB;
+    let off = !front || sx < 24 * S || sx > W - 24 * S || sy < 56 * S || sy > H - inB + 30 * S;
     let rot = 0, sc = 0;
     if (off) {
       if (kind === 'bandit' && dist > 5000) { put(it, false); return; }
@@ -85,7 +85,7 @@ export function createMarkers(G, layer, colli) {
       rot = Math.round(Math.atan2(ay, ax) * 30);
     } else if (kind === 'ring') {
       const focal = (H / 2) / Math.tan((cam.fov * Math.PI) / 360);
-      sc = Math.round(clamp(((m.radius || 60) / Math.max(dist, 1)) * focal / 24, 0.5, 9) * 20);
+      sc = Math.round(clamp(((m.radius || 60) / Math.max(dist, 1)) * focal / (12 * S), 0.5, 14) * 20);
     }
     if (dist < 25 && kind !== 'ring') { put(it, false); return; }
     put(it, true, sx, sy);
@@ -106,7 +106,7 @@ export function createMarkers(G, layer, colli) {
   return {
     resize(w, h, scale, portrait) {
       W = w; H = h; S = scale;
-      inL = inR = (portrait ? 30 : 64) * S; inT = 76 * S; inB = (portrait ? 0.46 * h / S : 132) * S;
+      inL = inR = portrait ? 34 * S : Math.max(112 * S, w * 0.285); inT = (portrait ? 190 : 86) * S; inB = (portrait ? 0.32 * h / S + 140 : 158) * S;
       ppdLast = -1;
     },
     // list — маркеры задания, auto[0..nAuto) — автоматические (полоса, противники)

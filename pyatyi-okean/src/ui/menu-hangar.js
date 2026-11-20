@@ -12,7 +12,9 @@ const planesOf = (role) => CATALOG.filter((s) => s.role === role).sort(byPrice);
 
 // ---------- характеристики для шкал (всё выводится из каталога) ----------
 const MAXV = Math.max(...CATALOG.map((s) => s.vMax));
-const rangeKm = (s, fuelK = 1) => ((s.fuel * fuelK) / s.burn) * s.vCruise * 1.4 / 1000;
+// расход в физике игровой (баки рассчитаны на полчаса-час), поэтому показываем запас в минутах на крейсерском режиме
+const cruiseMin = (s, fuelK = 1) => (s.fuel * fuelK) / s.burn / 0.68 / 60;
+const rangeKm = (s, fuelK = 1) => cruiseMin(s, fuelK) * 60 * s.vCruise / 1000;
 const MAXR = Math.max(...CATALOG.map((s) => rangeKm(s)));
 const agilityOf = (s) => (s.rollRate / 3.6) * 0.45 + (s.pitchRate / 1.5) * 0.3 + (s.maxG / 9) * 0.25;
 const payloadKg = (s) => (s.seats || 0) * 95 + (s.cargo || 0) + (s.water || 0) * 0.3;
@@ -30,7 +32,7 @@ function statRows(spec, mods) {
   const ag = agilityOf(spec);
   rows.push({ label: 'Манёвренность', k: ag, bonus: ag * (mods.agility - 1), value: `${fmtNum(spec.maxG, spec.maxG % 1 ? 1 : 0)} g` });
   const r = rangeKm(spec);
-  rows.push({ label: 'Дальность', k: Math.sqrt(r / MAXR), bonus: Math.sqrt(rangeKm(spec, mods.fuel) / MAXR) - Math.sqrt(r / MAXR), value: `${fmtInt(Math.round(rangeKm(spec, mods.fuel) / 10) * 10)} км` });
+  rows.push({ label: 'Запас топлива', k: Math.sqrt(r / MAXR), bonus: Math.sqrt(rangeKm(spec, mods.fuel) / MAXR) - Math.sqrt(r / MAXR), value: `${fmtInt(cruiseMin(spec, mods.fuel))} мин` });
   if (spec.role === 'military') {
     const hp = spec.hardpoints || 0;
     rows.push({ label: 'Вооружение', k: 0.15 + (hp / 10) * 0.85, bonus: (mods.ammo - 1) * 0.3, value: `пушка · ${hp} подв.` });
@@ -117,9 +119,10 @@ function createShowcase(G) {
         G.scene.add(model);
         if (!raf) { last = performance.now(); raf = requestAnimationFrame(tick); }
       } catch (e) { console.error('[menu] модель', e); model = null; }
-      const radius = Math.max(spec.length, spec.span) * 1.05 + 5;
-      const target = { x: s.x, y: y + spec.length * 0.02, z: s.z, radius };
-      Object.assign(orbit, { x: target.x, y: target.y, z: target.z, want: radius });
+      // radius — габаритный радиус самолёта: камера-витрина сама выбирает дистанцию
+      const radius = ((model && model.userData.radius) || Math.max(spec.length, spec.span) * 0.55) * 1.12;
+      const target = { x: s.x, y, z: s.z, radius };
+      Object.assign(orbit, { x: target.x, y: target.y, z: target.z, want: radius * 2.7 });
       const r = rig();
       try {
         if (typeof r.setShowcase === 'function') r.setShowcase(target);
@@ -140,9 +143,11 @@ function createShowcase(G) {
       const panel = el.querySelector('.menu-hangar-panel'), bar = el.querySelector('.menu-bar');
       if (!panel || !w || !h) return;
       const pr = panel.getBoundingClientRect(), top = bar ? bar.getBoundingClientRect().bottom : 0;
-      let cx = w / 2, cy = h / 2;
-      if (pr.left > w * 0.3) { cx = pr.left / 2; cy = (top + h) / 2 - h * 0.04; } // панель справа
-      else { cy = (top + pr.top) / 2; }                                           // панель снизу (портрет)
+      const id = el.querySelector('.menu-hangar-id');
+      const bottom = id ? id.getBoundingClientRect().top : h;
+      let cx = w / 2;
+      const cy = (top + bottom) / 2 + (bottom - top) * 0.06; // между шапкой и табличкой с именем
+      if (pr.left > w * 0.3) cx = pr.left / 2;               // панель справа; в портрете она снизу
       try { cam.setViewOffset(w, h, Math.round(w / 2 - cx), Math.round(h / 2 - cy), w, h); } catch (e) { /* ignore */ }
     },
     hide() {
@@ -207,7 +212,7 @@ export function hangarScreen(ctx) {
         <div><dt>Масса</dt><dd>${fmtInt(spec.mass)} кг</dd></div>
         <div><dt>Размах</dt><dd>${fmtNum(spec.span, 1)} м</dd></div>
         <div><dt>Длина</dt><dd>${fmtNum(spec.length, 1)} м</dd></div>
-        <div><dt>Посадочная</dt><dd>${fmtInt(spec.vStall * 3.6 * 1.25)} км/ч</dd></div>
+        <div><dt>Сваливание</dt><dd>${fmtInt(spec.vStall * 3.6)} км/ч</dd></div>
         <div><dt>Шасси</dt><dd>${spec.amphibian ? 'лодка-амфибия' : spec.retract ? 'убирается' : 'неубирающееся'}</dd></div>
       </dl>`;
   }

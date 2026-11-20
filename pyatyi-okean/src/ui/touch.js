@@ -156,13 +156,13 @@ export function createTouch(G, input) {
     }
     placeStick(dx, dy);
     const dead = 0.09;
-    const n = Math.min(d, R) / R;
+    const dc = Math.min(d, R), n = dc / R;
     if (n <= dead) { raw.stickX = raw.stickY = 0; return; }
     const m = (n - dead) / (1 - dead);
     const sens = clamp(G.profile.settings.sensitivity || 1, 0.4, 2.5);
     const a = clamp(0.4 * sens, 0.12, 1);
     // круг → «почти квадрат», чтобы по диагонали хватало хода
-    const ux = clamp((dx / Math.max(d, 1e-3)) * m * 1.18, -1, 1), uy = clamp((dy / Math.max(d, 1e-3)) * m * 1.18, -1, 1);
+    const ux = clamp((dx / Math.max(dc, 1e-3)) * m * 1.18, -1, 1), uy = clamp((dy / Math.max(dc, 1e-3)) * m * 1.18, -1, 1);
     raw.stickX = Math.sign(ux) * shape(Math.abs(ux), a);
     raw.stickY = Math.sign(uy) * shape(Math.abs(uy), a);
   }
@@ -391,7 +391,7 @@ export function createTouch(G, input) {
         el.flaps.classList.toggle('is-f2', f >= 2);
       }
       const air = p.onGround ? 0 : 1;
-      if (air !== last.air) { last.air = air; brakeLbl.textContent = air ? 'ЩИТКИ' : 'ТОРМОЗ'; }
+      if (air !== last.air) { last.air = air; brakeLbl.textContent = air && p.spec.airbrake !== false ? 'ЩИТКИ' : 'ТОРМОЗ'; }
       const br = input.state.brake ? 1 : 0;
       if (br !== last.brake) { last.brake = br; el.brake.classList.toggle('is-on', !!br); }
 

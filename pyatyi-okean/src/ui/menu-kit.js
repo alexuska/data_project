@@ -141,7 +141,7 @@ export function mapImage(G) {
   if (mapUrl !== null) return mapUrl;
   mapUrl = '';
   try {
-    const world = G.world, N = 144, size = world.size || 64000;
+    const world = G.world, N = 192, size = world.size || 64000;
     const c = document.createElement('canvas');
     c.width = c.height = N;
     const g = c.getContext('2d');
@@ -153,13 +153,10 @@ export function mapImage(G) {
       for (let i = 0; i < N; i++) {
         const h = hs[j * N + i], o = (j * N + i) * 4;
         if (h <= 0) { img.data[o + 3] = 0; continue; }
-        const t = Math.min(1, h / 900);
-        // лёгкая отмывка рельефа: свет с северо-запада
-        const hw = hs[j * N + Math.max(0, i - 1)], hn = hs[Math.max(0, j - 1) * N + i];
-        const shade = Math.max(-0.22, Math.min(0.22, ((h - hw) + (h - hn)) / 260));
-        const band = h < 40 ? 0.3 : h < 250 ? 0.42 : h < 600 ? 0.54 : 0.68;
-        for (let k = 0; k < 3; k++) img.data[o + k] = land[k] + (high[k] - land[k]) * t * t;
-        img.data[o + 3] = Math.round(255 * Math.max(0.12, Math.min(0.95, band + shade)));
+        // ступени высот, как на полётной карте: берег, равнина, предгорья, вершины
+        const t = h < 150 ? 0 : h < 450 ? 0.3 : h < 800 ? 0.6 : 1;
+        for (let k = 0; k < 3; k++) img.data[o + k] = land[k] + (high[k] - land[k]) * t;
+        img.data[o + 3] = Math.round(255 * (0.36 + t * 0.4));
       }
     }
     g.putImageData(img, 0, 0);

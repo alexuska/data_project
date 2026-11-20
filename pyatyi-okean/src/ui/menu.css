@@ -20,8 +20,8 @@
 
 .menu { color: var(--cream); font-family: var(--f-body); font-size: 14px; line-height: 1.35; }
 .menu-stage { position: absolute; inset: 0; }
-.menu h1, .menu h2, .menu h3, .menu h4, .menu p, .menu dl, .menu dd, .menu ul { margin: 0; padding: 0; }
-.menu ul { list-style: none; }
+:where(.menu) :where(h1, h2, h3, h4, p, dl, dd, ul) { margin: 0; padding: 0; }
+:where(.menu) ul { list-style: none; }
 :where(.menu) button { background: none; border: 0; padding: 0; margin: 0; border-radius: 0; text-align: inherit; cursor: pointer; -webkit-appearance: none; appearance: none; }
 .menu em, .menu i { font-style: normal; }
 
@@ -82,7 +82,7 @@
 #ui .menu-btn--primary { background: var(--dawn); border-color: var(--dawn); color: var(--night); font-weight: 600; }
 #ui .menu-btn--danger { border-color: var(--signal); color: var(--signal); background: var(--menu-signal-soft); }
 #ui .menu-btn--small { padding: 0 12px; font-size: 12px; }
-#ui .menu-btn--wide { min-width: 190px; }
+#ui .menu-btn--wide { min-width: 170px; }
 #ui .menu-btn.is-off { opacity: 0.42; }
 #ui .menu-icon-btn { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--glass-line); border-radius: 3px; background: var(--menu-glass-soft); color: var(--cream); }
 
@@ -148,7 +148,7 @@
 @keyframes menu-stamp { from { opacity: 0; transform: rotate(-14deg) scale(2.6); } }
 .menu-dialog--welcome .menu-dialog-title { font-size: 34px; letter-spacing: 0.16em; }
 
-.menu-toasts { position: absolute; inset: auto 0 calc(var(--sa-b) + 14px) 0; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.menu-toasts { position: absolute; inset: calc(var(--sa-t) + var(--menu-bar-h) + 4px) 0 auto 0; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
 .menu-toast { max-width: min(520px, calc(100% - 32px)); padding: 9px 14px; background: var(--night-2); border: 1px solid var(--glass-line); border-left: 3px solid var(--sky); border-radius: 3px; font-size: 13px; animation: menu-pop 0.2s both; transition: opacity 0.25s; }
 .menu-toast.is-good { border-left-color: var(--ok); }
 .menu-toast.is-warn { border-left-color: var(--dawn); }
@@ -160,19 +160,19 @@
 
 /* ---------- главный экран ---------- */
 .menu-screen--main::before, .menu-screen--pause::before {
-  background: linear-gradient(90deg, var(--menu-scrim-3) 0, var(--menu-scrim-2) 30%, var(--menu-scrim-0) 62%), linear-gradient(0deg, var(--menu-scrim-1), var(--menu-scrim-0) 40%); }
+  background: linear-gradient(90deg, var(--menu-scrim-3) 0, var(--menu-scrim-2) 40%, var(--menu-scrim-0) 70%), linear-gradient(0deg, var(--menu-scrim-1), var(--menu-scrim-0) 40%); }
 .menu-main { position: absolute; inset: 0; box-sizing: border-box; display: grid; grid-template-columns: minmax(280px, 470px) minmax(0, 1fr) minmax(224px, 280px); grid-template-rows: auto minmax(0, 1fr); column-gap: 16px;
   padding: calc(var(--sa-t) + 14px) var(--sa-r) calc(var(--sa-b) + 12px) calc(var(--sa-l) + 6px); }
 .menu-main-logo { grid-column: 1 / 3; grid-row: 1; min-width: 0; }
 .menu-main-over { display: flex; align-items: center; gap: 10px; font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--haze); white-space: nowrap; }
 .menu-main-over i { width: 22px; height: 1px; background: var(--haze); }
-.menu-main-title { font-family: var(--f-display); font-size: clamp(36px, 6.2vw, 68px); font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; line-height: 1; margin-top: 5px; white-space: nowrap; text-shadow: 0 2px 20px var(--menu-ink); }
+.menu-main-title { font-family: var(--f-display); font-size: clamp(34px, 5.5vw, 66px); font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; line-height: 1; margin-top: 5px; white-space: nowrap; text-shadow: 0 2px 20px var(--menu-ink); }
 .menu-main-title::after { content: ""; display: block; width: min(330px, 80%); height: 2px; margin-top: 9px; background: linear-gradient(90deg, var(--dawn), var(--dawn-2) 40%, var(--menu-scrim-0)); }
 .menu-main-nav { grid-column: 1; grid-row: 2; align-self: end; display: flex; flex-direction: column; min-width: 0; }
 #ui .menu-nav-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; color: var(--cream); }
 .menu-nav-name { font-family: var(--f-display); font-size: 20px; font-weight: 500; letter-spacing: 0.17em; text-transform: uppercase; white-space: nowrap; text-shadow: 0 1px 10px var(--menu-ink); }
-.menu-nav-dots { flex: 1; min-width: 12px; align-self: flex-end; margin-bottom: 15px; border-bottom: 1px dotted var(--menu-cream-faint); }
-.menu-nav-note { max-width: 58%; overflow: hidden; text-overflow: ellipsis; font-family: var(--f-mono); font-size: 11px; color: var(--haze); white-space: nowrap; }
+.menu-nav-dots { flex: 1; min-width: 12px; align-self: flex-end; margin-bottom: 15px; border-bottom: 1px dotted var(--menu-cream-dim); opacity: 0.55; }
+.menu-nav-note { max-width: 58%; overflow: hidden; text-overflow: ellipsis; font-family: var(--f-mono); font-size: 11px; color: var(--menu-cream-dim); white-space: nowrap; text-shadow: 0 1px 4px var(--night), 0 0 10px var(--night); }
 .menu-nav-item:empty, .menu-nav-note:empty { display: none; }
 #ui .menu-nav-item.is-primary { min-height: 52px; color: var(--dawn); }
 .menu-nav-item.is-primary .menu-nav-name { font-size: 30px; font-weight: 600; }
@@ -217,7 +217,10 @@
   .menu-screen--main::before { background: linear-gradient(180deg, var(--menu-scrim-3) 0, var(--menu-scrim-2) 45%, var(--menu-scrim-1) 100%); }
   .menu-main { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; touch-action: pan-y; padding-bottom: calc(var(--sa-b) + 70px); }
   .menu-main-nav { align-self: stretch; }
-  .menu-main-fs { position: absolute; right: var(--sa-r); top: calc(var(--sa-t) + 10px); }
+  .menu-main-fs { order: 9; flex: none; }
+  .menu-main-over { white-space: normal; flex-wrap: wrap; gap: 2px 10px; }
+  .menu-screen--hangar .menu-bar-title { display: none; }
+  #ui .menu-bar .menu-seg button { padding: 0 9px; letter-spacing: 0.08em; }
   .menu-main-side { justify-content: flex-start; margin-top: auto; }
   .menu-body { flex-direction: column; }
   .menu-rail { flex-direction: row; width: auto; gap: 0; }

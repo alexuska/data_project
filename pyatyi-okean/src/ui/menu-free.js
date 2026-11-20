@@ -28,16 +28,16 @@ export function freeScreen(ctx) {
           <section class="menu-panel menu-free-panel">
             <div class="menu-scroll menu-free-opts" data-scroll="free">
               <div class="menu-free-airport">
-                <div class="menu-label">${esc(KIND_NAMES[a.kind] || '')} · ${esc(a.code || '')}${p.visited[a.id] ? ' · <span class="menu-ok">посещён</span>' : ''}</div>
+                <div class="menu-label">${esc(KIND_NAMES[a.kind] || '')} · ${rw.map((r) => `ВПП ${esc(r.name)} — ${fmtInt(r.length)} м`).join(', ')}${p.visited[a.id] ? ' · <span class="menu-ok">посещён</span>' : ''}</div>
                 <h3 class="menu-free-name">${esc(a.name)}</h3>
-                <p class="menu-free-desc">${esc(a.desc || '')} ${rw.map((r) => `ВПП ${esc(r.name)} — ${fmtInt(r.length)} м`).join(', ')}. Высота ${fmtInt(a.elevation)} м.</p>
+                <p class="menu-free-desc">${esc(a.desc || '')} Высота ${fmtInt(a.elevation)} м.</p>
               </div>
               <div class="menu-opt"><span class="menu-label">Самолёт</span>
                 <div class="menu-chips menu-scroll-x" data-scroll="free-planes">${owned.map((s) => `<button type="button" class="menu-chip ${s.id === st.planeId ? 'is-on' : ''}" data-act="plane" data-v="${s.id}" data-sfx="ui_tick">${icon('plane', 16)}${esc(s.name)}</button>`).join('')}</div></div>
               <div class="menu-opt"><span class="menu-label">Старт</span>${segmented('start', STARTS, st.start)}</div>
               <div class="menu-opt"><span class="menu-label">Время</span>${segmented('tod', TIMES, st.tod, 'menu-seg--icons')}</div>
               <div class="menu-opt"><span class="menu-label">Погода</span>
-                <div class="menu-chips">${WEATHER.map((w) => `<button type="button" class="menu-chip ${w.v === st.weather ? 'is-on' : ''}" data-act="weather" data-v="${w.v}" data-sfx="ui_tick">${icon(w.icon, 16)}${w.label}</button>`).join('')}</div></div>
+                <div class="menu-chips menu-scroll-x" data-scroll="free-weather">${WEATHER.map((w) => `<button type="button" class="menu-chip ${w.v === st.weather ? 'is-on' : ''}" data-act="weather" data-v="${w.v}" data-sfx="ui_tick">${icon(w.icon, 16)}${w.label}</button>`).join('')}</div></div>
             </div>
             <footer class="menu-free-foot">
               <span class="menu-note">Налёт и посадки идут в лётную книжку</span>
@@ -61,12 +61,13 @@ export function freeScreen(ctx) {
         const lv = G.career.livery(spec.id);
         if (lv) session.livery = lv;
         if (st.start === 'air') {
-          // в воздухе: на прямой перед полосой, в 3 км от торца
+          // в воздухе: на прямой в 2,5 км до торца, с запасом высоты над рельефом по курсу
           const s0 = G.world.runwayStart(st.airportId, 0, 'A');
           const d = headingVec(s0.heading);
-          const x = s0.x - d.x * 3000, z = s0.z - d.z * 3000;
-          const ground = Math.max(0, G.world.heightAt(x, z));
-          session.air = { x, y: Math.max(s0.y + 450, ground + 350), z, heading: s0.heading, speed: spec.vCruise };
+          const x = s0.x - d.x * 2500, z = s0.z - d.z * 2500;
+          let top = 0;
+          for (let k = -1; k <= 16; k++) top = Math.max(top, G.world.heightAt(x + d.x * k * 500, z + d.z * k * 500));
+          session.air = { x, y: Math.max(s0.y + 450, top + 250), z, heading: s0.heading, speed: spec.vCruise };
         }
         G.career.select(spec.id);
         ctx.startFlight(session);

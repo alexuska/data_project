@@ -134,11 +134,10 @@ export function briefScreen(ctx) {
               <p class="menu-brief-desc">${esc(m.brief || '')}</p>
               ${routeHtml}
               <div class="menu-brief-row"><span class="menu-label">Самолёт</span>${planeHtml}</div>
-              <div class="menu-brief-row"><span class="menu-label">Награда</span>
-                <div class="menu-brief-reward"><b>${fmtMoney(reward.money || 0)}</b><span>${fmtInt(reward.xp || 0)} опыта</span>
-                <span class="menu-note">${st.done ? 'повторное выполнение оплачивается частично' : `за три звезды +${Math.round(STAR_BONUS[3] * 100)}%`}</span></div></div>
             </div>
             <footer class="menu-brief-foot">
+              <div class="menu-brief-reward"><span class="menu-label">Награда</span><b>${fmtMoney(reward.money || 0)}</b><span>${fmtInt(reward.xp || 0)} оп.</span>
+                <span class="menu-note">${st.done ? 'повтор оплачивается частично' : `три звезды: +${Math.round(STAR_BONUS[3] * 100)}%`}</span></div>
               ${!st.unlocked && st.lock === 'plane' ? '<button type="button" class="menu-btn" data-act="go" data-to="hangar">В ангар</button>' : ''}
               <button type="button" class="menu-btn menu-btn--primary menu-btn--wide ${canFly ? '' : 'is-off'}" data-act="fly" data-sfx="${canFly ? 'ui_click' : 'ui_error'}">На взлёт${icon('next', 18)}</button>
             </footer>

@@ -22,7 +22,6 @@ export function createMissions(G) {
       a.t += dt;
       if (G.player.agl > 300) {
         missions.active = null;
-        G.career.addReward(a.def.reward);
         G.endFlight({ reason: 'mission_complete', success: true, title: 'Задание выполнено', text: a.def.title, missionId: a.def.id, stars: 3, reward: a.def.reward });
       }
     },

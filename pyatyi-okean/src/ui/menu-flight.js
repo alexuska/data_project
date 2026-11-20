@@ -1,5 +1,5 @@
 // Пауза и разбор полёта.
-import { esc, icon, fmtInt, fmtMoney, fmtClock, fmtNum, fmtSigned, scale, shortAirport } from './menu-kit.js';
+import { esc, icon, fmtInt, fmtClock, fmtNum, fmtSigned, shortAirport } from './menu-kit.js';
 import { getSpec } from '../aircraft/catalog.js';
 
 const CRASH_TEXT = {
@@ -58,7 +58,11 @@ export function pauseScreen(ctx) {
       },
       'go-settings': () => ctx.go('settings'),
       'go-controls': () => ctx.go('controls'),
-      photo: () => { setPhoto(true); ctx.refresh(); },
+      photo: () => {
+        // HUD сам прячет меню и показывает свою кнопку выхода (setPhotoMode(on, ownExit)); если нет — своя кнопка «К паузе»
+        try { G.hud.setPhotoMode(true, true); } catch (e) { /* ignore */ }
+        if (G.menu && !G.menu.root.hidden) { photo = true; ctx.refresh(); }
+      },
       'photo-off': () => { setPhoto(false); ctx.refresh(); },
       end: () => {
         const session = (G.flight && G.flight.session) || {};
@@ -95,8 +99,9 @@ export function debriefScreen(ctx) {
       if (complete) { tone = 'good'; title = result.title || 'Задание выполнено'; }
       else if (result.reason === 'mission_failed') { tone = 'bad'; title = result.title || 'Задание провалено'; }
       else if (result.reason === 'crashed') { tone = 'bad'; title = 'Авария'; text = CRASH_TEXT[result.crashReason] || text || 'Самолёт разбит.'; }
-      else if (result.reason === 'landed') { title = result.missionId ? 'Задание прервано' : 'Посадка выполнена'; if (!result.missionId) tone = 'good'; }
       else if (result.missionId) title = 'Задание прервано';
+      else if (session.trial) title = 'Пробный вылет завершён';
+      else if (result.reason === 'landed' && pay.landing) { title = 'Посадка выполнена'; tone = 'good'; }
       const sub = [spec.name, def ? def.title : session.trial ? 'Пробный вылет' : 'Свободный полёт'].join(' · ');
 
       const starsHtml = complete ? `<div class="menu-deb-stars">${[0, 1, 2].map((i) => `<span class="${i < pay.stars ? 'is-on' : ''}" style="--i:${i}">${icon('star', 40)}</span>`).join('')}</div>` : '';

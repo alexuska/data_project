@@ -42,7 +42,7 @@ export const CATALOG = [
     vStall: 25, vMax: 71, vCruise: 50, vClimb: 38, maxG: 3.7, minG: -1.5, rollRate: 1.1, pitchRate: 0.9,
     fuel: 900, burn: 0.47, gearHeight: 1.9, retract: false, flaps: true, flapLift: 0.6, groundPitch: 11 * DEG,
     ceiling: 4400, climb: 3.2, takeoffRun: 170, landingRun: 215,
-    ground: true, bankLimit: 60 * DEG, seats: 12, cargo: 1500,
+    ground: true, bankLimit: 50 * DEG, seats: 12, cargo: 1500,
     desc: 'Легендарный биплан: выпускался более полувека и работает до сих пор. Взлетает с любой поляны, а при сильном встречном ветре может лететь «назад» относительно земли. В его руководстве нет скорости сваливания: с автоматическими предкрылками он не срывается, а парашютирует.',
   },
   {
@@ -51,15 +51,15 @@ export const CATALOG = [
     vStall: 41, vMax: 106, vCruise: 92, vClimb: 62, maxG: 3.5, minG: -1.4, rollRate: 1.2, pitchRate: 0.8,
     fuel: 1300, burn: 0.68, gearHeight: 1.6, retract: true, flaps: true, flapLift: 0.55,
     ceiling: 6300, climb: 7.5, takeoffRun: 450, landingRun: 350,
-    ground: true, reverse: true, bankLimit: 60 * DEG, seats: 19, cargo: 1700,
+    ground: true, reverse: true, bankLimit: 50 * DEG, seats: 19, cargo: 1700,
     desc: 'Турбовинтовая «элка» местных авиалиний. Буквы УВП в названии — «укороченный взлёт и посадка»: садится на грунт и короткие полосы, идеальна для островных рейсов. Большая часть построенных машин досталась советскому «Аэрофлоту».',
   },
   {
     id: 'yak40', name: 'Як-40', fullName: 'Яковлев Як-40', year: 1966, role: 'civil', cls: 'airliner',
-    engine: 'jet', engines: 3, mass: 14500, wingArea: 70, span: 25, length: 20.4, thrust: 44100, thrustLapse: 0.75,
+    engine: 'jet', engines: 3, mass: 14500, wingArea: 70, span: 25, length: 20.4, thrust: 44100, thrustLapse: 0.85,
     vStall: 52, vMax: 153, vCruise: 140, vClimb: 95, maxG: 3, minG: -1, rollRate: 0.9, pitchRate: 0.6,
     fuel: 3000, burn: 1.75, gearHeight: 1.9, retract: true, flaps: true, flapLift: 0.5,
-    ceiling: 8000, climb: 8, takeoffRun: 700, landingRun: 550,
+    ceiling: 8000, climb: 10, takeoffRun: 700, landingRun: 550,
     ground: true, reverse: true, airbrake: true, bankLimit: 47 * DEG, pitchLimit: [25 * DEG, 17 * DEG], mCrit: 0.7, seats: 32,
     desc: 'Первый в мире реактивный самолёт местных линий. Три двигателя в хвосте и прямое крыло: реактивная скорость с грунтовых аэродромов. Не нуждается в аэродромной технике — собственный трап в хвосте и автономный запуск двигателей.',
   },
@@ -68,25 +68,25 @@ export const CATALOG = [
     engine: 'jet', engines: 3, mass: 90000, wingArea: 201, span: 37.55, length: 47.9, thrust: 309000, thrustLapse: 0.6,
     vStall: 72, vMax: 264, vCruise: 250, vClimb: 150, maxG: 2.5, minG: -1, rollRate: 0.55, pitchRate: 0.35,
     fuel: 39000, burn: 17.5, gearHeight: 3.4, retract: true, flaps: true, flapLift: 0.75,
-    ceiling: 12100, climb: 15, takeoffRun: 1300, landingRun: 1000,
+    ceiling: 12100, climb: 16, takeoffRun: 1300, landingRun: 1000,
     reverse: true, airbrake: true, bankLimit: 47 * DEG, pitchLimit: [25 * DEG, 17 * DEG], mCrit: 0.84, seats: 180,
     desc: 'Самый массовый советский реактивный лайнер — «Тушка». Стреловидное крыло, три двигателя в хвосте и характерные гондолы шасси на крыле. Возил пассажиров почти полвека — с 1972 по 2020 год, а в 2010-м Ту-154 сумел сесть в тайге на заброшенную полосу Ижмы с полностью обесточенным бортом.',
   },
   {
     id: 'il76', name: 'Ил-76', fullName: 'Ильюшин Ил-76ТД', year: 1971, role: 'civil', cls: 'cargo',
-    engine: 'jet', engines: 4, mass: 150000, wingArea: 300, span: 50.5, length: 46.6, thrust: 471000, thrustLapse: 0.7,
+    engine: 'jet', engines: 4, mass: 150000, wingArea: 300, span: 50.5, length: 46.6, thrust: 471000, thrustLapse: 0.8,
     vStall: 68, vMax: 236, vCruise: 215, vClimb: 140, maxG: 2.3, minG: -0.8, rollRate: 0.45, pitchRate: 0.3,
-    fuel: 84000, burn: 25, gearHeight: 3.6, bellyHeight: 2.65, retract: true, flaps: true, flapLift: 0.8,
-    ceiling: 12000, climb: 10, takeoffRun: 1400, landingRun: 900,
+    fuel: 84000, burn: 32, gearHeight: 3.6, bellyHeight: 2.65, retract: true, flaps: true, flapLift: 0.8,
+    ceiling: 12000, climb: 13, takeoffRun: 1400, landingRun: 900,
     ground: true, reverse: true, airbrake: true, bankLimit: 47 * DEG, pitchLimit: [22 * DEG, 15 * DEG], mCrit: 0.77, cargo: 50000, water: 42000,
     desc: 'Тяжёлый транспортник-труженик: работает с грунта, со льда и в Антарктиде. Двадцать колёс шасси держат его на раскисшей полосе, а в 1975 году на Ил-76 установили 25 мировых рекордов. В пожарном варианте сбрасывает 42 тонны воды за заход.',
   },
   {
     id: 'be200', name: 'Бе-200', fullName: 'Бериев Бе-200ЧС «Альтаир»', year: 1998, role: 'civil', cls: 'amphibian',
-    engine: 'jet', engines: 2, mass: 36000, wingArea: 117.4, span: 32.8, length: 32, thrust: 147000, thrustLapse: 0.75,
+    engine: 'jet', engines: 2, mass: 36000, wingArea: 117.4, span: 32.8, length: 32, thrust: 147000, thrustLapse: 0.85,
     vStall: 56, vMax: 194, vCruise: 165, vClimb: 110, maxG: 2.6, minG: -1, rollRate: 0.6, pitchRate: 0.4,
     fuel: 12000, burn: 5.6, gearHeight: 2.6, hullHeight: 1.15, retract: true, flaps: true, flapLift: 0.6,
-    ceiling: 8000, climb: 13, takeoffRun: 700, landingRun: 950,
+    ceiling: 8000, climb: 15, takeoffRun: 700, landingRun: 950,
     amphibian: true, reverse: true, airbrake: true, bankLimit: 47 * DEG, pitchLimit: [25 * DEG, 17 * DEG], mCrit: 0.7, seats: 44, water: 12000,
     desc: 'Реактивная летающая лодка-амфибия. Набирает 12 тонн воды за 14 секунд глиссирования и тушит лесные пожары по всему миру. Двигатели подняты над крылом, чтобы в них не попадали брызги, а взлетать умеет и с бетона, и с морской волны.',
   },
@@ -103,7 +103,7 @@ export const CATALOG = [
     id: 'mig21', name: 'МиГ-21', fullName: 'Микоян МиГ-21бис', year: 1959, role: 'military', cls: 'fighter',
     engine: 'jet', engines: 1, mass: 8700, wingArea: 23, span: 7.15, length: 14.7, thrust: 69600, thrustDry: 40200,
     vStall: 78, vMax: 361, vCruise: 280, vClimb: 250, maxG: 8.5, minG: -3.5, rollRate: 3.2, pitchRate: 1.0,
-    fuel: 2300, burn: 2.3, gearHeight: 1.7, retract: true, flaps: true, flapLift: 0.3,
+    fuel: 2300, burn: 2.0, gearHeight: 1.7, retract: true, flaps: true, flapLift: 0.3,
     ceiling: 17500, climb: 225, takeoffRun: 830, landingRun: 550,
     afterburner: true, airbrake: true, chute: 16, ground: true, mCrit: 0.9, seats: 1, guns: 1, hardpoints: 4,
     desc: '«Балалайка» — самый массовый сверхзвуковой истребитель в истории: построено более 11 тысяч. Треугольное крыло, высокая посадочная скорость и строгий характер: в вираже быстро теряет скорость, зато разгоняется вдвое быстрее звука.',
@@ -143,7 +143,7 @@ function finalize(s) {
   s.flapLift ??= s.flaps ? 0.4 : 0;
   s.afterburner = !!s.afterburner;
   s.thrustDry ??= s.thrust;
-  s.thrustLapse ??= s.afterburner ? 0.2 : 0.45;
+  s.thrustLapse ??= s.afterburner ? 0.1 : 0.45;
   s.propEff ??= 0.8;
   s.minG ??= s.maxG >= 6 ? -0.45 * s.maxG : -1;
   s.mCrit ??= jet ? 0.8 : 0.65;

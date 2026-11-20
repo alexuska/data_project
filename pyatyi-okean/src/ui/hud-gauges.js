@@ -84,7 +84,7 @@ export function createGauges(G, dash, hdg) {
   function drawSpeed(c, ac, ils) {
     const w = 82, h = DASH_H, cy = h / 2;
     panel(c, 0, 0, w, h);
-    const kmh = ac.ias * 3.6, vmax = ac.spec.vMax * 3.6;
+    const kmh = ac.ias * 3.6, vmax = (ac.spec.vNe || ac.spec.vMax) * 3.6;
     const step = vmax < 450 ? 10 : vmax < 1100 ? 20 : 50;
     const pps = 11 / step;
     const fl = ac.flapsPos || 0;
@@ -120,7 +120,7 @@ export function createGauges(G, dash, hdg) {
     }
     c.restore();
     // значение
-    const warn = (!ac.onGround && kmh < vs * 1.06) || kmh > vmax * 0.985;
+    const warn = (!ac.onGround && (typeof ac.stallWarn === 'number' ? ac.stallWarn > 0.75 : kmh < vs * 1.06)) || kmh > vmax * 0.985;
     valueBox(c, 5, cy - 14, 56, 28, true);
     c.fillStyle = warn ? K.signal : K.cream;
     c.font = `600 19px ${MONO}`; c.textAlign = 'center'; c.textBaseline = 'middle';

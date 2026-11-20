@@ -6,11 +6,10 @@
 import { clamp, damp } from '../core/util.js';
 import { createTouch } from '../ui/touch.js';
 
-// есть ли у самолёта форсаж и с какого положения РУД он включается (поля необязательные — физика может их добавить)
+// есть ли у самолёта форсаж и с какого положения РУД он включается (spec.afterburner; зона РУД > 0.9, как в физике)
 export function afterburnerFrom(spec) {
   if (!spec) return 0;
-  const has = spec.afterburner ?? (spec.engine === 'jet' && spec.cls === 'fighter');
-  return has ? (typeof spec.afterburner === 'number' ? spec.afterburner : 0.88) : 0;
+  return spec.afterburner ? (typeof spec.afterburner === 'number' ? spec.afterburner : 0.9) : 0;
 }
 
 export function createInput(G) {

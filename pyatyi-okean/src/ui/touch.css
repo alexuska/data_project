@@ -6,13 +6,15 @@
   --touch-edge: rgba(244, 236, 216, 0.34);      /* кромка кнопок */
   --touch-fill: rgba(11, 22, 38, 0.5);          /* стекло кнопок */
   --touch-fill-on: rgba(255, 154, 61, 0.26);    /* нажатая/активная кнопка */
+  --touch-knob-2: #d9cfb6;                      /* нижний край рукоятки РУД */
   font-family: var(--f-display);
   color: var(--cream);
   direction: ltr;
 }
 .touch.touch-lefty { direction: rtl; }
 .touch[hidden], .touch [hidden] { display: none !important; }
-.touch button, .touch-hint, .touch-thr-val, .touch-thr-handle { direction: ltr; }
+.touch button, .touch-thr-val, .touch-thr-handle { direction: ltr; }
+.touch-hint, .touch-thr-ab span { unicode-bidi: plaintext; text-align: left; }
 .touch svg { width: calc(22 * var(--u)); height: calc(22 * var(--u)); fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; display: block; }
 
 /* ---------- ручка ---------- */
@@ -78,7 +80,7 @@
 .touch-thr-handle {
   position: absolute; left: calc(-7 * var(--u)); right: calc(-7 * var(--u)); height: var(--hh); box-sizing: border-box;
   bottom: calc(var(--t) * (100% - var(--hh)));
-  border-radius: calc(9 * var(--u)); background: linear-gradient(to bottom, var(--cream), #d9cfb6);
+  border-radius: calc(9 * var(--u)); background: linear-gradient(to bottom, var(--cream), var(--touch-knob-2));
   box-shadow: 0 calc(3 * var(--u)) calc(9 * var(--u)) rgba(0, 0, 0, 0.5), inset 0 -2px 0 rgba(11, 22, 38, 0.18);
   display: flex; align-items: center; justify-content: center;
   color: var(--night); font-size: calc(12 * var(--u)); letter-spacing: 0.14em;
