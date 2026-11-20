@@ -1,0 +1,79 @@
+<title>Пятый океан</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>/* src/ui/base.css */
+/* Пятый океан — единый визуальный мир игры (одна тёмная тема, намеренно).
+   Раскладка: холст на весь экран, поверх него слой #ui с учётом безопасных зон телефона. */
+:root {
+  color-scheme: dark;
+  /* палитра: ночное небо, тёплый горизонт, приборная кремовая шкала */
+  --night: #0b1626;        /* глубокий фон панелей */
+  --night-2: #13243a;      /* приподнятая поверхность */
+  --night-3: #1d3552;      /* границы, неактивные элементы */
+  --haze: #8fb4cc;         /* вторичный текст, небесная дымка */
+  --cream: #f4ecd8;        /* основной текст, шкалы приборов */
+  --dawn: #ff9a3d;         /* акцент: рассветный оранжевый */
+  --dawn-2: #ffc56b;       /* светлый акцент */
+  --signal: #ef4f3f;       /* опасность, противник */
+  --ok: #6fd08c;           /* норма, шасси выпущено */
+  --sky: #57b6d9;          /* информация, союзники, маршрут */
+  --glass: rgba(11, 22, 38, 0.62);     /* стекло панелей поверх 3D */
+  --glass-line: rgba(244, 236, 216, 0.16);
+  /* шрифты */
+  --f-display: "Oswald", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Golos Text", "Segoe UI", Roboto, system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  /* безопасные зоны */
+  --sa-t: env(safe-area-inset-top, 0px);
+  --sa-b: env(safe-area-inset-bottom, 0px);
+  --sa-l: max(16px, env(safe-area-inset-left, 0px));
+  --sa-r: max(16px, env(safe-area-inset-right, 0px));
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--cream);
+  font-family: var(--f-body);
+  font-size: 15px;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#app { position: fixed; inset: 0; overflow: hidden; background: var(--night); }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#ui {
+  position: absolute; inset: 0;
+  pointer-events: none;            /* слои сами включают pointer-events там, где нужно */
+  touch-action: none;
+  font-variant-numeric: tabular-nums;
+}
+#ui > * { position: absolute; inset: 0; pointer-events: none; }
+#ui button { font: inherit; color: inherit; touch-action: manipulation; }
+#ui button:focus-visible { outline: 2px solid var(--dawn-2); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  #ui * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* src/ui/hud.css */
+.hud-v0-data { inset: auto; position: absolute; left: var(--sa-l); top: calc(var(--sa-t) + 10px); font-family: var(--f-mono); font-size: 13px; background: var(--glass); padding: 6px 10px; border-radius: 6px; }
+.hud-v0-obj { position: absolute; left: 50%; top: calc(var(--sa-t) + 44px); transform: translateX(-50%); font-family: var(--f-display); font-size: 16px; text-shadow: 0 1px 4px #000; }
+.hud-v0-toast { position: absolute; left: 50%; bottom: calc(var(--sa-b) + 24px); transform: translateX(-50%); font-size: 14px; text-shadow: 0 1px 4px #000; }
+.hud-v0-pause { position: absolute; right: var(--sa-r); top: calc(var(--sa-t) + 10px); width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--glass-line); background: var(--glass); pointer-events: auto; }
+
+/* src/ui/menu.css */
+.menu { pointer-events: none; }
+.menu-v0 { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; justify-content: center; padding: calc(var(--sa-t) + 16px) var(--sa-r) calc(var(--sa-b) + 16px) var(--sa-l); background: linear-gradient(90deg, rgba(11,22,38,.85), rgba(11,22,38,0) 70%); pointer-events: auto; }
+.menu-v0 h1 { font-family: var(--f-display); font-size: 44px; margin: 0; letter-spacing: .04em; text-transform: uppercase; }
+.menu-v0-list { display: flex; flex-wrap: wrap; gap: 8px; max-width: 560px; }
+.menu-v0 button { min-height: 44px; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--glass-line); background: var(--night-2); }
+</style>
+<div id="app">
+  <canvas id="gl"></canvas>
+  <div id="ui"></div>
+</div>
+<script src="game.js"></script>
