@@ -9,6 +9,7 @@ import { createCombat } from './systems/combat.js';
 import { createAI } from './systems/ai.js';
 import { createCareer } from './systems/career.js';
 import { createMissions } from './missions/index.js';
+import { createAerobatics } from './systems/aerobatics.js';
 import { createHud } from './ui/hud.js';
 import { createMenu } from './ui/menu.js';
 
@@ -24,6 +25,7 @@ function boot() {
   G.ai = createAI(G);
   G.hud = createHud(G);
   G.missions = createMissions(G);
+  G.aerobatics = createAerobatics(G);
   G.menu = createMenu(G);
 
   // ---- отладка и тестовый стенд ----

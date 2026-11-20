@@ -161,6 +161,7 @@ G.step = function (dt) {
     }
     safe('combat', () => G.combat.update(dt));
     if (G.career.update) safe('career', () => G.career.update(dt));
+    if (G.aerobatics) safe('aerobatics', () => G.aerobatics.update(dt));
     if (p && f && !f.ended) {
       f.time += dt;
       if (p.alive) {

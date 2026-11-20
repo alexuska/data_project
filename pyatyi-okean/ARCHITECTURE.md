@@ -203,3 +203,13 @@ id аэродромов (стабильны): `yasny, kamenny, gavan, gnezdo, ma
 **Описание задания** (`G.missions.list[]`): `{ id, title, category, brief, plane? (жёстко заданный id), planes? (разрешённые id), cls? (разрешённые классы), reward: { money, xp }, requires?: { rank?: индекс звания, missions?: [id] }, difficulty: 1..5, order, from?: id аэродрома, to?: id аэродрома }`. Доступность и звёзды: `G.career.missionState(id) -> { unlocked, reason, stars, done }`.
 
 **Свободный полёт** — `G.startFlight({ planeId, airportId | air, timeOfDay, weather })` без `missionId`. Завершение — из паузы («Завершить полёт») → `G.endFlight({ reason: 'quit' | 'landed' })`.
+
+## Дополнения (второй этап)
+
+**Персонализация.** Игра — подарок Дмитрию Копленко от сына Алексея. Позывной игрока — `G.profile.callsign` («Корвет»): в радиообмене обращаться по позывному («Тирасполь-Вышка: Корвет, взлёт разрешаю»). Семейная фраза «Три-хо-хо!» — изредка, как похвала за удачу. Места: `yasny` = Тирасполь (родной город), `gavan` = Бендеры (за «мостом через Днестр», ориентир `bridge`), `polyarny` = Москва, `yuzhny` = Париж, ориентир `resort` = Бри-Конт-Робер. id не менялись — названия всегда бери из `world.airportById[id].name` / `world.poiById[id].name`, не константами.
+
+**Пилотаж — `src/systems/aerobatics.js`, `src/ui/aerobatics.css` (`G.aerobatics`).** Распознаёт фигуры игрока в любом полёте и шлёт событие `trick:done { id, name, score, ac }`. id фигур: `roll` (бочка), `loop` (мёртвая петля), `immelmann` (полупетля с полубочкой), `splits` (переворот), `chandelle` (боевой разворот), `turn360` (вираж), `inverted` (перевёрнутый полёт), `lowpass` (бреющий проход), `knife` (полёт на ноже), `hammerhead` (поворот на горке) — список можно расширять. Поля: `score` (очки за полёт), `done[]`. Ядро зовёт `G.aerobatics.update(dt)` каждый шаг симуляции.
+
+**Бой (упрощённый, аркадный) — `src/systems/combat.js`, `src/systems/ai-combat.js`.** Владелец — ведущий. API по разделам «Вооружение», «Бой», «ИИ». Противник — `G.ai.spawn({ specId, team: 'enemy', x, y, z, heading, speed, behavior: 'attack', skill })`; цели — `G.combat.spawnGroundTarget({ kind, x, z, y?, heading?, team?, hp? })` → `{ id, kind, pos, vel, hp, alive, team }`; уничтожение для тестов — `G.combat.damage(entity, 9999, G.player)`; события `ac:destroyed { ac, by }`, `target:destroyed { target, by }`.
+
+**Вода и груз в заданиях** не зависят от боя: задание само показывает кнопку через `G.hud.setAction` и рисует сброс через `G.fx.waterDrop` / свою модель груза.
