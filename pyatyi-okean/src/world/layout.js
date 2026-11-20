@@ -46,7 +46,7 @@ export const AIRPORTS = [
   {
     id: 'yuzhny', name: 'Париж', code: 'УПРЖ', kind: 'regional', x: 18500, z: 21000, elevation: 8, side: 1,
     runways: [{ name: '01/19', heading: 10 * DEG, length: 1900, width: 45, cx: 18500, cz: 21000 }],
-    desc: 'Аэропорт на тёплом южном острове. Рядом — городок Бри-Конт-Робер.',
+    desc: 'Аэропорт на тёплом южном острове. Отсюда рукой подать до дома — городка Бри-Конт-Робер.',
   },
   {
     id: 'carrier', name: 'Авианосец «Буревестник»', code: 'БРВС', kind: 'carrier', x: -21000, z: 6000, elevation: 18, side: 1,
