@@ -77,6 +77,11 @@ G.startFlight = function (session = {}) {
   if (session.air) {
     const a = session.air;
     ac = G.spawnAircraft(session.planeId, { team: 'player', isPlayer: true, x: a.x, y: a.y, z: a.z, heading: a.heading || 0, speed: a.speed || getSpec(planeId).vCruise, livery: session.livery });
+  } else if (session.parking != null && session.parking !== false && G.world.airportById[session.airportId || 'yasny']?.parking?.length) {
+    // старт со стоянки на перроне: session.parking — индекс стоянки или true (первая подходящая)
+    const apt = G.world.airportById[session.airportId || 'yasny'];
+    const pk = apt.parking[session.parking === true ? 0 : Math.min(session.parking | 0, apt.parking.length - 1)];
+    ac = G.spawnAircraft(session.planeId, { team: 'player', isPlayer: true, x: pk.x, y: apt.elevation, z: pk.z, heading: pk.heading || 0, speed: 0, onGround: true, livery: session.livery });
   } else {
     const st = G.world.runwayStart(session.airportId || 'yasny', session.runway || 0, session.end || 'A');
     ac = G.spawnAircraft(session.planeId, { team: 'player', isPlayer: true, x: st.x, y: st.y, z: st.z, heading: st.heading, speed: 0, onGround: true, livery: session.livery });
@@ -153,6 +158,8 @@ G.step = function (dt) {
   if (G.mode === 'flight') {
     const f = G.flight, p = G.player;
     safe('input', () => { G.input.update(dt); if (p && p.alive) G.input.apply(p); });
+    // автопилот и помощники навигации: пишут в controls игрока поверх ручного ввода
+    if (G.autoflight) safe('autoflight', () => G.autoflight.update(dt));
     safe('missions', () => G.missions.update(dt));
     safe('ai', () => G.ai.update(dt));
     for (let i = 0; i < G.aircraft.length; i++) {

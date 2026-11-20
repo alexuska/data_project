@@ -356,7 +356,7 @@ export function createCareer(G) {
         progress: next ? Math.max(0, Math.min(1, (xp - RANKS[i].xp) / (next.xp - RANKS[i].xp))) : 1,
       };
     },
-    owns(id) { return p().owned.includes(id); },
+    owns(id) { return !!p().settings.unlockAll || p().owned.includes(id); },
     canBuy(id) {
       const e = ECONOMY[id];
       if (!e || !CATALOG_BY_ID[id]) return { ok: false, reason: 'Недоступно' };
@@ -398,7 +398,7 @@ export function createCareer(G) {
       const rec = p().missions[id] || {};
       const out = { unlocked: true, reason: '', lock: null, stars: rec.stars || 0, done: rec.done || 0, best: rec.best || 0 };
       if (!def) { out.unlocked = false; out.reason = 'Задание недоступно'; out.lock = 'none'; return out; }
-      const req = def.requires || {};
+      const req = p().settings.unlockAll ? {} : (def.requires || {});
       if (req.rank != null && career.rank().index < req.rank) {
         out.unlocked = false; out.lock = 'rank';
         out.reason = `Нужно звание «${RANKS[Math.min(req.rank, RANKS.length - 1)].name}»`;

@@ -33,6 +33,7 @@ export function settingsScreen(ctx) {
             ${toggle('invertPitch', 'Инверсия тангажа', 'выкл.: палец вниз — нос вверх, как штурвал на себя')}
             ${toggle('assist', 'Помощь пилоту', 'координация разворотов и мягкое сваливание')}
             ${toggle('leftHanded', 'Раскладка для левши', 'ручка управления справа, РУД слева')}
+            ${toggle('unlockAll', 'Открыть всё', 'все самолёты и задания доступны сразу, без покупки и званий')}
             <div class="menu-set"><span class="menu-set-name">Шпаргалка по кнопкам</span><span class="menu-set-ctl"><button type="button" class="menu-btn menu-btn--small" data-act="go" data-to="controls">${icon('controls', 18)}Открыть</button></span></div>
             ${inFlight ? '' : `<h4 class="menu-book-sub">Пилот</h4>
             <label class="menu-set"><span class="menu-set-name">Имя в лётной книжке</span><span class="menu-set-ctl"><input class="menu-input" type="text" maxlength="18" value="${esc(G.profile.pilotName || '')}" data-name autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done"></span></label>

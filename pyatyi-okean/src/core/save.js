@@ -33,6 +33,7 @@ export function defaultProfile() {
       units: 'metric',
       leftHanded: false,
       tutorialDone: false,
+      unlockAll: true,           // режим проверки: все самолёты и задания открыты (выключается в настройках)
     },
     seen: {},                    // флаги показанных подсказок
   };

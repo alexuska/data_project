@@ -213,3 +213,15 @@ id аэродромов (стабильны): `yasny, kamenny, gavan, gnezdo, ma
 **Бой (упрощённый, аркадный) — `src/systems/combat.js`, `src/systems/ai-combat.js`.** Владелец — ведущий. API по разделам «Вооружение», «Бой», «ИИ». Противник — `G.ai.spawn({ specId, team: 'enemy', x, y, z, heading, speed, behavior: 'attack', skill })`; цели — `G.combat.spawnGroundTarget({ kind, x, z, y?, heading?, team?, hp? })` → `{ id, kind, pos, vel, hp, alive, team }`; уничтожение для тестов — `G.combat.damage(entity, 9999, G.player)`; события `ac:destroyed { ac, by }`, `target:destroyed { target, by }`.
 
 **Вода и груз в заданиях** не зависят от боя: задание само показывает кнопку через `G.hud.setAction` и рисует сброс через `G.fx.waterDrop` / свою модель груза.
+
+## Дополнения (третий этап)
+
+Отзыв заказчика после игры: «непонятно, что делать»; жёлтый кружок-маркер непонятен; инструкция быстро пропадает; застрял на боевом развороте в «Школе пилотажа»; хочется больше похожести на авиасимулятор (но без сложности для папы) и более красивого мира. Самолёты и звук нравятся.
+
+**Материалы.** Самолёты теперь `MeshStandardMaterial` с гладкими нормалями и отражением неба (исключение из правила «Lambert + flatShading»). Мир может уходить от гранёного стиля к более реалистичному, если это красиво и укладывается в бюджет телефона Galaxy S23.
+
+**Режим «Открыть всё».** `G.profile.settings.unlockAll` (по умолчанию включён): `career.owns()` и `career.missionState()` считают всё доступным.
+
+**Автопилот и навигация — `src/systems/autoflight.js`, `src/ui/autoflight.css` (`G.autoflight`).** Ядро зовёт `G.autoflight.update(dt)` каждый шаг симуляции сразу после ручного ввода (`input.apply`) — модуль пишет в `G.player.controls` поверх ввода, когда включён. Поля: `active`, `mode`, `destination`. Методы: `engage(mode, opts)`, `disengage()`, `setDestination(airportId | null)`.
+
+**Старт со стоянки.** `G.startFlight({ ..., airportId, parking: true | индекс })` ставит самолёт на `airport.parking[i]`.
