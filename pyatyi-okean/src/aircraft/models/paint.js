@@ -19,7 +19,7 @@ export const FIXED = {
   nozzle: '#57524d', nozzleIn: '#1b1816', metal: '#a4abb1', prop: '#27292c', propTip: '#e9b91f', wire: '#50555b',
   window: '#14202b', exhaust: '#3a3430', pitot: '#8a9096', gun: '#2a2c30', lamp: '#f6f2de', rubber: '#26272a',
   navR: '#1fa54a', navL: '#c62828', seat: '#3a3f45', pilot: '#e6e2d6', chuteA: '#f1efe6', chuteB: '#e8641c', chuteIn: '#c9c6bc',
-  winRim: '#4e555c', cone: '#3b3631', fan: '#2a2d31', antenna: '#2c2f33', reg: '#1d2a3c',
+  winRim: '#4e555c', cone: '#3b3631', fan: '#2a2d31', antenna: '#2c2f33', reg: '#1d2a3c', bort: '#b5261b',
 };
 
 // отделка поверхности: [шероховатость 0..1, металличность 0..1, «стекло» 0..1]
@@ -29,7 +29,7 @@ export const FIN = {
   intake: [0.85, 0, 0], nozzle: [0.42, 0.8, 0], nozzleIn: [0.75, 0.3, 0], prop: [0.5, 0.15, 0], propTip: [0.4, 0, 0], wire: [0.4, 0.7, 0],
   window: [0.05, 0, 1], glass: [0.04, 0, 1], exhaust: [0.6, 0.55, 0], pitot: [0.22, 0.95, 0], gun: [0.45, 0.65, 0], lamp: [0.08, 0, 1],
   seat: [0.8, 0, 0], pilot: [0.7, 0, 0], chuteA: [0.9, 0, 0], chuteB: [0.9, 0, 0], chuteIn: [0.9, 0, 0], winRim: [0.6, 0, 0],
-  cone: [0.55, 0.7, 0], fan: [0.5, 0.75, 0], antenna: [0.5, 0, 0], radome: [0.48, 0, 0], navR: [0.1, 0, 1], navL: [0.1, 0, 1],
+  cone: [0.55, 0.7, 0], fan: [0.5, 0.75, 0], antenna: [0.5, 0, 0], reg: [0.4, 0, 0], bort: [0.45, 0, 0], radome: [0.48, 0, 0], navR: [0.1, 0, 1], navL: [0.1, 0, 1],
 };
 
 const GLASS_LO = lin('#09121a'), GLASS_HI = lin('#3d5a6e');
@@ -104,7 +104,8 @@ export function paintShape(shape, scheme, dims) {
     }
     fin = c.fin ? (FIN[c.fin] || c.fin) : skin || !FIN[p.part] ? skinFin : FIN[p.part];
     if (p.decal) jit = 0;
-    const rgb = lin(hex);
+    let rgb = lin(hex);
+    const pv = scheme.perVertex && skin && !p.decal; // камуфляж: пятна считаются по вершинам — мягкие края вместо «ступенек» граней
     // «панели»: мягкие различия тона по ячейкам ~1.5 м (обшивку красили и меняли листами)
     const f = 1 + (hash3(Math.floor(c.x / 1.3 + 0.5) + (p.mir ? 1000 : 0), Math.floor(c.y / 1.1), Math.floor(c.z / 1.7)) - 0.5) * jit * wear;
     const metal = fin[1] > 0.4;
@@ -112,6 +113,11 @@ export function paintShape(shape, scheme, dims) {
       const px = pos[i * 3], py = pos[i * 3 + 1], pz = pos[i * 3 + 2];
       // объём: в нишах и у корней — темнее (часть затенения — в шейдере, здесь — «грязь» в углах)
       const o = ao[i];
+      if (pv) {
+        c.x = px + cg[0]; c.y = py + cg[1]; c.z = pz + cg[2]; c.ax = Math.abs(c.x); c.zn = c.z / c.L; c.xn = c.ax / c.W;
+        const h2 = scheme(c);
+        if (h2) rgb = lin(h2);
+      }
       let k = f * (0.55 + 0.45 * o);
       // потёртость/неравномерность краски
       if (skin || metal) k *= 1 + (vnoise(px * 0.55, py * 0.55, pz * 0.55) - 0.5) * (metal ? 0.16 : 0.07) * wear;
@@ -205,6 +211,7 @@ export function camo(o) {
   };
   f.base = cols[0];
   f.finish = o.finish || 'matte';
+  f.perVertex = true;
   return f;
 }
 
@@ -238,5 +245,6 @@ export function aggressor() {
   };
   f.base = '#33383f';
   f.finish = 'matte';
+  f.perVertex = true;
   return f;
 }

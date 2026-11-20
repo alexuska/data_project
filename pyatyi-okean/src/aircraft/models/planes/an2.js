@@ -69,6 +69,7 @@ export default {
     b.wheel([0, TW + 0.21, 10.75], 0.21, 0.14, 8);
     b.anchors.gearNose = [0, TW, 10.75];
     b.prop({ c: [0, yc, 0.3], r: 1.8, blades: 4, chord: 0.3 });
+    b.label(fus, 'RA-40514', 9.0, 0.36, 0.3);
     b.lights({ tip: [9.1, 3.98, 4.2], tail: [0, 3.6, 12.7], top: [0, 3.82, 5.6], land: [[-3.6, 1.72, 3.5]] });
     b.anchors.cockpit = [0.3, 3.15, 2.75];
   },

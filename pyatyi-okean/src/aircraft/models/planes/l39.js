@@ -16,7 +16,7 @@ export default {
     { id: 'camo', name: 'Зелёно-коричневый камуфляж', paint: camo({ cols: ['#5d6d3c', '#8a7347', '#3f5432'], under: '#9fc4dc', scale: 1.5, radome: '#3f5432' }) },
   ],
   build(b) {
-    b.loft([
+    const fus = b.loft([
       [0, 1.25, 0.02, 0.02], [0.6, 1.28, 0.2, 0.2], [1.6, 1.36, 0.36, 0.4], [2.6, 1.42, 0.45, 0.52, 2.4], [4.2, 1.45, 0.5, 0.6, 2.6, 0.55], [5.6, 1.5, 0.52, 0.62, 2.6, 0.55],
       [7.6, 1.55, 0.5, 0.58, 2.4, 0.5], [9.5, 1.65, 0.4, 0.45], [11.0, 1.72, 0.3, 0.3], [11.45, 1.72, 0.27, 0.27],
     ], { n: 12, part: 'fus', capB: { inset: 0.25, s: 0.8, part: 'nozzleIn', rim: 'nozzle' }, partOf: (i) => (i === 0 ? 'radome' : i === 8 ? 'nozzle' : null) });
@@ -49,6 +49,7 @@ export default {
       const bb = b.addBone('brk' + sx, { pivot: [sx * 0.25, 0.93, 4.1], axis: [1, 0, 0], ch: 'brake', max: 0.95, hide: true });
       b.withBone(bb, () => b.door({ pts: [[sx * 0.06, 0.92, 4.1], [sx * 0.44, 0.95, 4.1], [sx * 0.44, 0.95, 4.9], [sx * 0.06, 0.92, 4.9]], th: 0.04, part: 'fus', inner: 'dark', out: [0, -1, 0] }));
     }
+    b.label(fus, '07', 2.3, 0.45, 0.3, 'bort');
     b.lights({ tip: [4.73, 1.2, 6.0], tail: [0, 2.0, 12.0], top: [0, 4.75, 11.7], bottom: [0, 0.92, 6.0], land: [[0, 1.0, 1.9]] });
     b.anchors.cockpit = [0, 2.2, 3.05];
     b.anchors.muzzles.push([0, 0.95, 2.6]);

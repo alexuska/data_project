@@ -45,6 +45,8 @@ export default {
     b.wing({ part: 'fin', root: [0, 3.3], dih: 90 * D, sym: true, tr: 0.1, sub: 0.7, st: [[0, 13.0, 5.4], [3.2, 16.7, 3.3]], ctl: [{ name: 'rud', ch: 'rud', s0: 0.6, s1: 3.05, f: 0.3, max: 0.4 }] });
     b.loft([[16.5, 6.52, 0.02, 0.02], [17.2, 6.52, 0.2, 0.22], [19.2, 6.52, 0.2, 0.22], [20.35, 6.52, 0.03, 0.03]], { n: 8, part: 'fin' });
     b.gear({ name: 'gearN', nose: true, pivot: [0, 1.2, 2.4], axle: [0, 2.4], r: 0.35, w: 0.24, axis: [1, 0, 0], max: 1.5, door: 'front' });
+    b.label(fus, 'RA-87455', 12.2, 0.26, 0.36);
+    b.blade(fus.at(6.5, 0.0), 0.3, 0.32); b.blade(fus.at(8, 1.0), 0.28, 0.3);
     b.lights({ tip: [12.55, 2.42, 9.3], tail: [0, 6.52, 20.35], top: [0, 3.3, 7.0], bottom: [0, 0.83, 8.5], land: [[2.2, 1.45, 7.5], [-2.2, 1.45, 7.5]], strobe: true });
     b.anchors.cockpit = [0.35, 2.75, 2.0];
   },

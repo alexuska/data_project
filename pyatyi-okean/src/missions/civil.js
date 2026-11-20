@@ -140,7 +140,7 @@ export const parisEvening = {
         },
       }),
       S.reach({
-        text: `Набор 1500 м, курс на ${port.name}`, x: port.x, z: port.z, y: 1500, label: port.name, radius: 1400,
+        text: `Набор 1200 м, курс на ${port.name}`, x: port.x, z: port.z, y: 1200, label: port.name, radius: 1400,
         enter(m) { m.radio(CREW, 'Табло «пристегните ремни» горит. Развороты — плавные, пожалуйста: у нас горячий чай.'); },
       }),
       S.reach({
@@ -166,7 +166,7 @@ export const parisEvening = {
     if (g < 0.5) loss += (0.5 - g) * 18;
     const bank = Math.abs(ac.bank) / DEG;
     if (bank > 32) loss += (bank - 32) * 0.35;
-    if (ac.vs < -18) loss += 2;
+    if (ac.vs < -22) loss += 2;
     if (loss > 0) {
       m.data.comfort = Math.max(0, m.data.comfort - loss * dt);
       const c = m.data.comfort;

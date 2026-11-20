@@ -22,11 +22,11 @@ export const firstFlight = {
     m.data.lastPush = 0;
     return [
       {
-        text: 'Плавно дайте полный газ: РУД вперёд до упора',
+        text: 'Дайте полный газ: РУД до упора',
         markers: [],
         enter(m) {
           m.tower('yasny', `${m.cs}, ${tw}. Полоса ${rwNum(H)}, ${windPhrase(m.world)}. Взлёт разрешаю. С первым вылетом!`);
-          m.radio(INS, 'Я рядом. Рычаг газа — РУД — плавно вперёд до упора. Ручку пока не трогай.');
+          m.radio(INS, 'Я рядом. Рычаг газа — РУД, ползунок справа — плавно до упора вверх. Ручку пока не трогай.');
         },
         update: (m) => m.ac.controls.throttle > 0.85 || m.ac.throttle > 0.85,
       },
@@ -36,7 +36,7 @@ export const firstFlight = {
         update(m) {
           const ac = m.ac;
           if (ac.onGround && ac.ias > ac.spec.vRotate * 0.95) m.hint('rot', INS, `Есть ${kmh(ac.spec.vRotate)}! Плавно ручку на себя — нос вверх.`, 8);
-          if (ac.onGround && m.stepT > 25 && ac.throttle < 0.5) m.hint('thr', INS, 'Газ! РУД вперёд до упора, иначе не взлетим.', 12);
+          if (ac.onGround && m.stepT > 25 && ac.throttle < 0.5) m.hint('thr', INS, 'Газ! РУД до упора, иначе не взлетим.', 12);
           return !ac.onGround && ac.agl > 5;
         },
       },
@@ -232,6 +232,8 @@ export const aeroSchool = {
   },
 };
 
+// фигуры, которые распознаются «по дороге» к нужной (переворот внутри петли и т.п.) — не ругаем за них
+const PART = { roll: ['inverted', 'knife'], loop: ['inverted', 'splits', 'immelmann', 'hammerhead'], chandelle: ['turn360', 'immelmann'] };
 function onTrick(m, id, name) {
   if (m.index > 2 || !m.data.want || m.data.got === m.data.want) return;
   if (m.t - (m.data.gotT || -9) < 2) return;
@@ -240,7 +242,7 @@ function onTrick(m, id, name) {
     const praise = { roll: 'Чистая бочка! Засчитано.', loop: 'Вот это петля! Засчитано.', chandelle: 'Боевой разворот есть. Отлично!' }[id];
     m.radio(INS, praise, { now: true });
     m.toast(`Фигура выполнена: ${FIG[id].name}`, 'good');
-  } else if (name) m.hint('other', INS, `${name[0].toUpperCase() + name.slice(1)} — красиво! Но сейчас я просил ${FIG[m.data.want].name}.`, 10);
+  } else if (name && !(PART[m.data.want] || []).includes(id)) m.hint('other', INS, `${name[0].toUpperCase() + name.slice(1)} — красиво! Но сейчас я просил ${FIG[m.data.want].name}.`, 10);
 }
 
 // Запасное распознавание (если модуль пилотажа не прислал trick:done): по угловым скоростям и курсу.

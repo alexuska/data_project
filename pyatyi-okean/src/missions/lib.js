@@ -30,7 +30,8 @@ export function windPhrase(world) {
   const w = world.wind, sp = Math.hypot(w.x, w.z);
   if (sp < 1) return 'ветер тихий';
   const from = Math.round(vecHeading(-w.x, -w.z) / DEG / 10) * 10 || 360;
-  return `ветер ${from} градусов ${Math.round(sp)}`;
+  const v = Math.round(sp);
+  return `ветер ${from} градусов, ${v} ${plural(v, 'метр', 'метра', 'метров')}`;
 }
 
 // ---------- полосы ----------

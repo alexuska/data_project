@@ -20,14 +20,24 @@ export const fireResort = {
     if (this._geo) return this._geo;
     const r = world.poiById.resort;
     const scoop = findScoop(world, r.x, r.z);
-    const c = findLand(world, r.x + (scoop.x > r.x ? -700 : 700), r.z - 600, { minH: 3, maxH: 400, slope: 16, step: 220 });
+    // лес над городком — с той стороны, что дальше от аэропорта и от моря
+    const apt = world.airportById.yuzhny;
+    let c = null, best = -1;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const q = findLand(world, r.x + Math.sin(a) * 1000, r.z - Math.cos(a) * 1000, { rMax: 500, minH: 4, maxH: 400, slope: 16, step: 160 });
+      if (world.groundAt(q.x, q.z).surface !== 'ground' || dist2(q.x, q.z, r.x, r.z) > 1600) continue;
+      const score = Math.min(dist2(q.x, q.z, apt.x, apt.z), 3000) + dist2(q.x, q.z, scoop.x, scoop.z) * 0.3;
+      if (score > best) { best = score; c = q; }
+    }
+    c ||= findLand(world, r.x, r.z - 900, { minH: 3, maxH: 400, slope: 16, step: 220 });
     const fires = [0, 2, 4].map((k) => findLand(world, c.x, c.z, { minH: 3, maxH: 400, slope: 16, step: 220, skip: k }));
     return (this._geo = { scoop, fires, resort: r });
   },
   session(G, world) {
     const g = this.geo(world);
-    const s = offset(g.scoop.x, g.scoop.z, g.scoop.heading + Math.PI, 3200);
-    return { airportId: 'yuzhny', air: { x: s.x, y: 320, z: s.z, heading: g.scoop.heading, speed: 85 }, timeOfDay: 15, weather: 'clear' };
+    const s = offset(g.scoop.x, g.scoop.z, g.scoop.heading + Math.PI, 5000);
+    return { airportId: 'yuzhny', air: { x: s.x, y: 260, z: s.z, heading: g.scoop.heading, speed: 80 }, timeOfDay: 15, weather: 'clear' };
   },
   freezeTime: true,
   start(m) {

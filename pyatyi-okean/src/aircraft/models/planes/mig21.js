@@ -14,7 +14,7 @@ export default {
   ],
   build(b) {
     const yc = 1.62;
-    b.loft([[0.55, yc, 0.44, 0.44], [1.4, yc, 0.52, 0.52], [3.0, yc, 0.6, 0.6], [5.5, yc, 0.62, 0.64], [10.5, yc, 0.62, 0.62], [12.6, yc, 0.56, 0.56], [13.55, yc, 0.5, 0.5]],
+    const fus = b.loft([[0.55, yc, 0.44, 0.44], [1.4, yc, 0.52, 0.52], [3.0, yc, 0.6, 0.6], [5.5, yc, 0.62, 0.64], [10.5, yc, 0.62, 0.62], [12.6, yc, 0.56, 0.56], [13.55, yc, 0.5, 0.5]],
       { n: 12, part: 'fus', capA: { inset: 0.5, s: 0.86, part: 'intake', rim: 'lip' }, capB: { inset: 0.4, s: 0.82, part: 'nozzleIn', rim: 'nozzle' }, partOf: (i) => (i === 5 ? 'nozzle' : null) });
     b.loft([[0, yc, 0.01, 0.01], [0.5, yc, 0.17, 0.17], [1.05, yc, 0.3, 0.3]], { n: 8, part: 'radome' });
     b.nozzleGlow([0, yc, 13.55], 0.4, 3.2);
@@ -42,6 +42,7 @@ export default {
     const bb = b.addBone('brk', { pivot: [0, 1.0, 8.6], axis: [1, 0, 0], ch: 'brake', max: 0.8, hide: true });
     b.withBone(bb, () => b.door({ pts: [[-0.25, 0.99, 8.6], [0.25, 0.99, 8.6], [0.25, 0.99, 9.6], [-0.25, 0.99, 9.6]], th: 0.04, part: 'fus', inner: 'dark', out: [0, -1, 0] }));
     b.dragChute([0, 2.35, 13.9], 2.25, 9);
+    b.label(fus, '35', 2.0, 0.42, 0.36, 'bort');
     b.lights({ tip: [3.58, 1.38, 10.2], tail: [0, 4.0, 14.6], top: [0, 2.48, 6.0], bottom: [0, 0.98, 6.5], land: [[0.9, 1.4, 6.6]] });
     b.anchors.cockpit = [0, 2.42, 3.55];
     b.anchors.muzzles.push([0, 0.95, 5.2]);

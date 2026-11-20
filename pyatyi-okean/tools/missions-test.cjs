@@ -149,6 +149,27 @@ function pageDriver(id) {
     if (row.text) console.log(`${''.padEnd(16)} ${row.text}`);
     if (row.console) console.log(`${''.padEnd(16)} консоль: ${row.console}`);
   }
+  // провал: удар о пролёт моста в «Чкаловском пролёте» -> mission_failed
+  if (!only || only.includes('chkalov')) {
+    const f = await page.evaluate(() => {
+      const G = window.__G;
+      let end = null;
+      const off = G.bus.on('flight:end', (e) => { end = e.result; });
+      G.startFlight({ missionId: 'chkalov' });
+      G.debug.advance(1, false);
+      const m = G.missions.active.m, g = m.mission.geo(G.world);
+      G.debug.teleport({ x: g.mid, y: 150, z: g.bz - 300, heading: Math.PI, speed: 60 });
+      m.goto('pass');
+      G.debug.teleport({ x: g.mid, y: 38, z: g.bz - 120, heading: Math.PI, speed: 60 });
+      for (let i = 0; i < 8 && !end; i++) G.debug.advance(1, false);
+      off();
+      G.toMenu();
+      return end && { reason: end.reason, success: end.success, title: end.title };
+    });
+    const ok = f && f.reason === 'mission_failed' && f.success === false;
+    console.log(`${'провал-тест'.padEnd(16)} ${ok ? 'ок' : 'ошибка'} — ${f ? f.title : 'нет flight:end'}`);
+    if (!ok) rows.push({ start: 'ошибка', smoke: 'провал-тест' });
+  }
   const errs = await page.evaluate(() => window.__G.errors);
   const bad = rows.filter((r) => r.start !== 'ок' || !r.smoke.startsWith('ок')).length;
   console.log(`\nИтого: ${rows.length - bad}/${rows.length} заданий ок. Ошибки модулей: ${JSON.stringify(errs)}. Ошибок консоли: ${consoleErr.length}`);

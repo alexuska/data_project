@@ -113,7 +113,9 @@ export function createHud(G) {
       }
     }
     const fixed = !ac.spec.retract;
-    const want = !!best && !ac.onGround && ac.alive && ac.agl < 1500 && ac.gearPos > 0.5 && (!fixed || ac.flaps > 0 || ac.agl < 350);
+    // сразу после взлёта (набор с ещё выпущенным шасси) помощь на посадке не показываем
+    const climbOut = ac.airTime != null && ac.airTime < 45 && ac.vs > -1.5;
+    const want = !!best && !ac.onGround && ac.alive && !climbOut && ac.agl < 1500 && ac.gearPos > 0.5 && (!fixed || ac.flaps > 0 || ac.agl < 350);
     if (!want) { ils.active = false; ils.rw = null; return; }
     const h = best.heading + bestEnd * Math.PI;
     ils.active = true; ils.rw = best; ils.ap = bestAp; ils.hdg = h; ils.len = best.length;

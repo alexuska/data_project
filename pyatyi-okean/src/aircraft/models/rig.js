@@ -77,6 +77,7 @@ function refreshEnv(renderer) {
   const lit = Math.min(1.2, (e.sunIntensity || 0) * Math.max(0, e.lightDir ? e.lightDir.y : 0.5) * 0.11 + (e.ambientIntensity || 0) * 0.07);
   _gc.setRGB(0.42 * lit, 0.5 * lit, 0.34 * lit);
   EU.uEnvGnd.value.copy(_gc).lerp(e.fogColor, 0.25 * (1 - (e.night || 0)));
+  EU.uEnvK.value = 1 - 0.35 * (e.night || 0);
 }
 
 export function materials() {

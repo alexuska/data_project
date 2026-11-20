@@ -87,6 +87,23 @@ const PART_SA = { tire: 60, hub: 5, prop: 20, propTip: 20, door: 20, strutS: 20,
 // каналы костей, чьи части не затеняют корпус при запекании объёма (убираются, крутятся, прячутся)
 const AO_SKIP = { gear: 1, prop: 1, disc: 1, chute: 1, brake: 1, spoil: 1 };
 
+// штриховой шрифт для бортовых номеров: знак 0.6 × 1, отрезки [u0, v0, u1, v1]
+const BOX = [[0, 0, 0.6, 0], [0.6, 0, 0.6, 1], [0.6, 1, 0, 1], [0, 1, 0, 0]];
+const FONT = {
+  0: BOX, 1: [[0.33, 0, 0.33, 1], [0.12, 0.78, 0.33, 1]],
+  2: [[0, 1, 0.6, 1], [0.6, 1, 0.6, 0.5], [0.6, 0.5, 0, 0.5], [0, 0.5, 0, 0], [0, 0, 0.6, 0]],
+  3: [[0, 1, 0.6, 1], [0.6, 1, 0.6, 0], [0, 0, 0.6, 0], [0.12, 0.5, 0.6, 0.5]],
+  4: [[0, 1, 0, 0.45], [0, 0.45, 0.6, 0.45], [0.48, 0.8, 0.48, 0]],
+  5: [[0.6, 1, 0, 1], [0, 1, 0, 0.52], [0, 0.52, 0.6, 0.52], [0.6, 0.52, 0.6, 0], [0.6, 0, 0, 0]],
+  6: [[0.6, 1, 0, 1], [0, 1, 0, 0], [0, 0, 0.6, 0], [0.6, 0, 0.6, 0.52], [0.6, 0.52, 0, 0.52]],
+  7: [[0, 1, 0.6, 1], [0.6, 1, 0.2, 0]],
+  8: [...BOX, [0, 0.5, 0.6, 0.5]],
+  9: [[0.6, 0.48, 0, 0.48], [0, 0.48, 0, 1], [0, 1, 0.6, 1], [0.6, 1, 0.6, 0], [0.6, 0, 0, 0]],
+  R: [[0, 0, 0, 1], [0, 1, 0.6, 1], [0.6, 1, 0.6, 0.5], [0.6, 0.5, 0, 0.5], [0.22, 0.5, 0.6, 0]],
+  A: [[0, 0, 0, 1], [0, 1, 0.6, 1], [0.6, 1, 0.6, 0], [0, 0.5, 0.6, 0.5]],
+  '-': [[0.08, 0.5, 0.52, 0.5]],
+};
+
 // ближайшая к (px,py,pz) точка треугольника t (неиндексированный массив P): out = [x, y, z, d², u, w] (барицентры при B и C)
 function closestOnTri(P, t, px, py, pz, out) {
   const i = t * 9;
@@ -355,6 +372,36 @@ export class Builder {
       for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; pts.push(add(c, add(mul(T, Math.cos(a)), mul(B, Math.sin(a))))); }
     } else pts = [add(add(c, T), B), add(sub(c, T), B), sub(sub(c, T), B), sub(add(c, T), B)];
     this.face(pts, sub(c, s.n), { part, decal: 1, ...meta });
+  }
+
+  // бортовой номер / регистрация штрихами-наклейками на лофте: text (цифры, R, A, -), z — середина надписи, a — по обводу,
+  // h — высота знака, part ('reg' — гражданская регистрация, 'bort' — военный номер). Читается слева направо с обоих бортов.
+  label(lf, text, z, a, h, part = 'reg', sides = [1, -1], eps = 0.03) {
+    const adv = h * 0.78, sw = h * 0.15, n = text.length, w0 = (n - 1) * adv;
+    for (const sd of sides) {
+      for (let ci = 0; ci < n; ci++) {
+        const strokes = FONT[text[ci]];
+        if (!strokes) continue;
+        const off = -w0 / 2 + ci * adv; // по ходу чтения
+        const zc = z + (sd > 0 ? -off : off);
+        const s = lf.at(zc, a, sd);
+        const R = sd > 0 ? mul(s.t, -1) : s.t, B = norm(sub(s.b, mul(s.n, s.b[0] * s.n[0] + s.b[1] * s.n[1] + s.b[2] * s.n[2])));
+        const c0 = add(s.p, mul(s.n, eps));
+        const P = (u, v) => add(c0, add(mul(R, (u - 0.3) * h), mul(B, (v - 0.5) * h)));
+        for (const [u0, v0, u1, v1] of strokes) {
+          const e0 = P(u0, v0), e1 = P(u1, v1), dd = norm(sub(e1, e0)), ww = mul(norm(cross(s.n, dd)), sw / 2), ex = mul(dd, sw / 2);
+          const A = sub(e0, ex), Bp = add(e1, ex);
+          this.face([add(A, ww), add(Bp, ww), sub(Bp, ww), sub(A, ww)], sub(c0, s.n), { part, decal: 1 });
+        }
+      }
+    }
+  }
+
+  // ножевая антенна на поверхности: s — { p, n, t } из at(), h — высота, c — хорда у основания, sweep — стреловидность
+  blade(s, h, c, sweep = 0.7, part = 'antenna') {
+    const T = s.t, N = s.n, base = sub(s.p, mul(N, 0.02));
+    const pts = [base, add(base, mul(T, c)), add(add(base, mul(N, h + 0.02)), mul(T, sweep * h + c * 0.85)), add(add(base, mul(N, h + 0.02)), mul(T, sweep * h + c * 0.45))];
+    this.door({ pts, th: Math.max(0.015, c * 0.08), part, inner: part, out: cross(T, N) });
   }
 
   // ряд иллюминаторов на лофте: { z0, z1, count, a, w, h, sides: [1,-1], part, shape, skip(i) }
@@ -932,9 +979,9 @@ export class Builder {
         E.push(A[0] * v0 + B[0] * u + C[0] * w, A[1] * v0 + B[1] * u + C[1] * w, A[2] * v0 + B[2] * u + C[2] * w, fn[t * 3], fn[t * 3 + 1], fn[t * 3 + 2], ea);
       }
     }
-    const grid = new Map(), cell = (x) => Math.floor(x / R);
+    const grid = new Map(), cell = (x) => Math.floor(x / R) + 512, ck = (x, y, z) => (x * 1024 + y) * 1024 + z;
     for (let e = 0; e < E.length; e += 7) {
-      const key = cell(E[e]) + ',' + cell(E[e + 1]) + ',' + cell(E[e + 2]);
+      const key = ck(cell(E[e]), cell(E[e + 1]), cell(E[e + 2]));
       const g = grid.get(key);
       if (g) g.push(e); else grid.set(key, [e]);
     }
@@ -948,7 +995,7 @@ export class Builder {
       let occ = 0;
       const cx = cell(px), cy = cell(py), cz = cell(pz);
       for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) {
-        const g = grid.get((cx + i) + ',' + (cy + j) + ',' + (cz + k));
+        const g = grid.get(ck(cx + i, cy + j, cz + k));
         if (!g) continue;
         for (const e of g) {
           const dx = E[e] - px, dy = E[e + 1] - py, dz = E[e + 2] - pz, dd = dx * dx + dy * dy + dz * dz;

@@ -50,6 +50,8 @@ export default {
     b.wing({ part: 'fin', root: [0, 5.15], dih: 90 * D, sym: true, tr: 0.1, sub: 0.7, st: [[0, 24.3, 6.2], [3.6, 27.4, 3.9]], ctl: [{ name: 'rud', ch: 'rud', s0: 0.5, s1: 3.4, f: 0.3, max: 0.4 }] });
     b.loft([[26.4, 8.82, 0.02, 0.02], [27.3, 8.82, 0.24, 0.26], [30.4, 8.82, 0.24, 0.26], [31.9, 8.82, 0.03, 0.03]], { n: 8, part: 'fin' });
     b.gear({ name: 'gearN', nose: true, pivot: [0, 1.6, 5.0], axle: [0, 5.0], r: 0.34, w: 0.22, axis: [1, 0, 0], max: -1.5, wheels: [[-0.22, 0], [0.22, 0]], door: 'front' });
+    b.label(fus, 'RA-21512', 19.5, 0.34, 0.42);
+    b.blade(fus.at(5.5, 0.0), 0.32, 0.35);
     b.lights({ tip: [16.35, 6.05, 19.5], tail: [0, 5.2, 31.3], top: [0, 5.05, 9], bottom: [0, 0.6, 9], land: [[1.0, 2.6, 3.0], [-1.0, 2.6, 3.0]], strobe: true, scale: 1.2 });
     b.anchors.cockpit = [0.45, 4.45, 3.3];
   },

@@ -12,7 +12,7 @@ export default {
     { id: 'desert', name: 'Песочный', paint: camo({ cols: ['#c2a56c', '#8c6c44', '#d6c08d'], under: '#a9c7da', scale: 1.25, seed: 5, radome: '#8c6c44' }) },
   ],
   build(b) {
-    b.loft([
+    const fus = b.loft([
       [0, 1.65, 0.03, 0.03], [0.5, 1.68, 0.3, 0.28, 3], [1.6, 1.75, 0.55, 0.55, 3], [2.8, 1.85, 0.68, 0.75, 3, 0.7], [4.5, 1.9, 0.7, 0.9, 3, 0.75], [6.5, 1.95, 0.68, 0.95, 2.6, 0.7],
       [9.0, 2.0, 0.55, 0.8, 2.4, 0.6], [11.5, 2.1, 0.38, 0.55], [13.5, 2.2, 0.28, 0.36], [14.8, 2.25, 0.2, 0.22],
     ], { n: 12, part: 'fus', capB: true, partOf: (i) => (i === 0 ? 'radome' : null) });
@@ -46,6 +46,7 @@ export default {
     b.emblem(fin.at(1.1, 0.4, false), 0.8);
     b.gear({ name: 'gearN', nose: true, pivot: [-0.15, 1.2, 4.25], axle: [-0.15, 4.25], r: 0.33, w: 0.2, axis: [1, 0, 0], max: -1.5, door: 'front' });
     b.dragChute([0, 2.3, 14.85], 2.8, 9);
+    b.label(fus, '18', 2.6, 0.45, 0.4, 'bort');
     b.lights({ tip: [7.16, 2.15, 7.6], tail: [0, 2.3, 14.9], top: [0, 4.85, 13.6], bottom: [0, 1.15, 9.0], land: [[7.02, 2.15, 7.15], [-7.02, 2.15, 7.15]] });
     b.anchors.cockpit = [0, 2.78, 3.45];
     b.anchors.muzzles.push([-0.3, 1.3, 1.6]);
